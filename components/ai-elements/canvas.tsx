@@ -14,7 +14,7 @@ export const Canvas = ({ children, ...props }: CanvasProps) => (
   <ReactFlow
     deleteKeyCode={deleteKeyCode}
     fitView
-    panOnDrag={false}
+    panOnDrag={[1, 2]}
     panOnScroll
     selectionOnDrag={true}
     zoomOnDoubleClick={false}

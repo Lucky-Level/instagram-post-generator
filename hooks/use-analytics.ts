@@ -1,15 +1,11 @@
-import { track as vercelTrack } from "@vercel/analytics/react";
-
 export const useAnalytics = () => {
   const track = (
-    category: string,
-    object: string,
-    action: string,
-    metadata: Parameters<typeof vercelTrack>[1]
+    _category: string,
+    _object: string,
+    _action: string,
+    _metadata?: Record<string, unknown>
   ) => {
-    const eventName = `${category}:${object}_${action}`;
-
-    vercelTrack(eventName, metadata);
+    // no-op: analytics disabled
   };
 
   return { track };

@@ -1,28 +1,31 @@
-import { type HandleUploadBody, handleUpload } from "@vercel/blob/client";
+import { writeFile, mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
 export const POST = async (request: Request) => {
-  const body = (await request.json()) as HandleUploadBody;
-
   try {
-    const jsonResponse = await handleUpload({
-      body,
-      request,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          "image/*",
-          "audio/*",
-          "video/*",
-          "application/pdf",
-          "text/*",
-        ],
-        maximumSizeInBytes: 10 * 1024 * 1024, // 10MB
-      }),
-      // Required by @vercel/blob but no action needed
-      onUploadCompleted: async () => undefined,
-    });
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
 
-    return NextResponse.json(jsonResponse);
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = file.name.split(".").pop() || "bin";
+    const filename = `${nanoid()}.${ext}`;
+
+    const uploadDir = join(process.cwd(), "public", "uploads");
+    await mkdir(uploadDir, { recursive: true });
+
+    const filePath = join(uploadDir, filename);
+    await writeFile(filePath, buffer);
+
+    return NextResponse.json({
+      url: `/uploads/${filename}`,
+      type: file.type,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message },

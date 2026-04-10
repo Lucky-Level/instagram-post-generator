@@ -1,33 +1,82 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import { Canvas } from "@/components/canvas";
+import { ChatPanel } from "@/components/chat-panel";
 import { Controls } from "@/components/controls";
-import { Reasoning } from "@/components/reasoning";
 import { Toolbar } from "@/components/toolbar";
 import { GatewayProvider } from "@/providers/gateway";
-import { ReactFlowProvider } from "../providers/react-flow";
+import { ReactFlowProvider } from "@/providers/react-flow";
 
-export const metadata: Metadata = {
-  title: "Tersa",
-  description:
-    "A visual AI playground. Drag, drop, connect and run nodes to build AI workflows powered by various industry-leading AI models.",
-};
+type ViewMode = "app" | "studio";
 
-export const maxDuration = 800;
+const Index = () => {
+  const [view, setView] = useState<ViewMode>("app");
 
-const Index = () => (
-  <GatewayProvider>
-    <ReactFlowProvider>
-      <div className="flex h-screen w-screen items-stretch overflow-hidden">
-        <div className="relative flex-1">
-          <Canvas>
-            <Controls />
-            <Toolbar />
-          </Canvas>
+  return (
+    <GatewayProvider>
+      <ReactFlowProvider>
+        <div className="flex h-screen w-screen flex-col overflow-hidden">
+          {/* Header with tabs */}
+          <header className="flex items-center justify-between border-b bg-background px-4 h-12 shrink-0">
+            <div className="flex items-center gap-3">
+              <h1 className="font-semibold text-sm tracking-tight">
+                post<span className="text-orange-500">·</span>agent
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-1 bg-secondary rounded-lg p-0.5">
+              <button
+                onClick={() => setView("app")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                  view === "app"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                App
+              </button>
+              <button
+                onClick={() => setView("studio")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition ${
+                  view === "studio"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Studio
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <a href="/assets" className="hover:text-foreground transition">
+                Assets
+              </a>
+            </div>
+          </header>
+
+          {/* Content area */}
+          <div className="flex flex-1 items-stretch overflow-hidden">
+            {view === "app" ? (
+              <div className="flex-1 flex items-stretch justify-center bg-secondary/30">
+                <ChatPanel fullscreen />
+              </div>
+            ) : (
+              <>
+                <ChatPanel />
+                <div className="relative flex-1">
+                  <Canvas>
+                    <Controls />
+                    <Toolbar />
+                  </Canvas>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <Reasoning />
-      </div>
-    </ReactFlowProvider>
-  </GatewayProvider>
-);
+      </ReactFlowProvider>
+    </GatewayProvider>
+  );
+};
 
 export default Index;

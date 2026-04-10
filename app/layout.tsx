@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
-import { Analytics } from "@vercel/analytics/next";
 import type { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { mono, sans, serif } from "@/lib/fonts";
@@ -30,7 +29,6 @@ const RootLayout = ({ children }: RootLayoutProps) => (
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster className="z-[99999999]" />
       </ThemeProvider>
-      <Analytics />
     </body>
   </html>
 );

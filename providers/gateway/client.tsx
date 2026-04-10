@@ -1,13 +1,8 @@
 "use client";
 
-import type { GatewayLanguageModelEntry } from "@ai-sdk/gateway";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
-import {
-  providers,
-  type TersaModel,
-  type TersaProvider,
-} from "@/lib/providers";
+import { providers, type TersaModel, type TersaProvider } from "@/lib/providers";
 
 export type PriceBracket = "lowest" | "low" | "high" | "highest";
 
@@ -32,13 +27,6 @@ export type TersaVideoModel = TersaModel & {
   })[];
 };
 
-interface GatewayProviderClientProps {
-  children: ReactNode;
-  models: GatewayLanguageModelEntry[];
-  imageModels: GatewayLanguageModelEntry[];
-  videoModels: GatewayLanguageModelEntry[];
-}
-
 interface GatewayContextType {
   models: Record<string, TersaTextModel>;
   imageModels: Record<string, TersaImageModel>;
@@ -49,238 +37,70 @@ const GatewayContext = createContext<GatewayContextType | undefined>(undefined);
 
 export const useGateway = () => {
   const context = useContext(GatewayContext);
-
   if (!context) {
     throw new Error("useGateway must be used within a GatewayProviderClient");
   }
-
   return context;
 };
 
-/**
- * Determines price indicator based on statistical distribution of model costs
- * @param totalCost - The total cost (input + output) for the model
- * @param allCosts - Array of all model costs for comparison
- * @returns PriceBracket or undefined if relatively on par
- */
-const getPriceIndicator = (
-  totalCost: number,
-  allCosts: number[]
-): "lowest" | "low" | "high" | "highest" | undefined => {
-  if (allCosts.length < 2) {
-    return;
-  }
-
-  // Sort costs to calculate percentiles
-  const sortedCosts = [...allCosts].sort((a, b) => a - b);
-  const length = sortedCosts.length;
-
-  // Calculate percentile thresholds
-  const p20 = sortedCosts[Math.floor(length * 0.2)];
-  const p40 = sortedCosts[Math.floor(length * 0.4)];
-  const p60 = sortedCosts[Math.floor(length * 0.6)];
-  const p80 = sortedCosts[Math.floor(length * 0.8)];
-
-  // Determine price bracket based on percentiles
-  if (totalCost <= p20) {
-    return "lowest";
-  }
-  if (totalCost <= p40) {
-    return "low";
-  }
-  if (totalCost >= p80) {
-    return "highest";
-  }
-  if (totalCost >= p60) {
-    return "high";
-  }
-
-  // If between p40 and p60 (middle 20%), it's relatively on par
-  return;
-};
-
-const buildTextModels = (models: GatewayLanguageModelEntry[]) => {
-  const textModels: Record<string, TersaTextModel> = {};
-
-  const allCosts = models.map((model) => {
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-    return inputPrice + outputPrice;
-  });
-
-  for (const model of models) {
-    const [chef] = model.id.split("/");
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-
-    let realChef = providers.unknown;
-    let realProvider = providers.unknown;
-
-    if (chef in providers) {
-      realChef = providers[chef as keyof typeof providers];
-    }
-
-    if (model.specification.provider in providers) {
-      realProvider =
-        providers[model.specification.provider as keyof typeof providers];
-    }
-
-    const totalCost = inputPrice + outputPrice;
-
-    textModels[model.id] = {
-      label: model.name,
-      chef: realChef,
+const HARDCODED_MODELS: GatewayContextType = {
+  models: {
+    "groq/llama-3.3-70b-versatile": {
+      label: "Llama 3.3 70B",
+      chef: providers.groq,
       providers: [
         {
-          ...realProvider,
-          model: model.id,
-          getCost: ({ input, output }: { input: number; output: number }) =>
-            inputPrice * input + outputPrice * output,
+          ...providers.groq,
+          model: "groq/llama-3.3-70b-versatile",
+          getCost: () => 0,
         },
       ],
-      priceIndicator: getPriceIndicator(totalCost, allCosts),
-    };
-  }
-
-  return textModels;
-};
-
-const buildImageModels = (models: GatewayLanguageModelEntry[]) => {
-  const imageModels: Record<string, TersaImageModel> = {};
-
-  const allCosts = models.map((model) => {
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-    return inputPrice + outputPrice;
-  });
-
-  for (const model of models) {
-    const [chef] = model.id.split("/");
-
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-
-    let realChef = providers.unknown;
-    let realProvider = providers.unknown;
-
-    if (chef in providers) {
-      realChef = providers[chef as keyof typeof providers];
-    }
-
-    if (model.specification.provider in providers) {
-      realProvider =
-        providers[model.specification.provider as keyof typeof providers];
-    }
-
-    const totalCost = inputPrice + outputPrice;
-    const flatCost = totalCost || 0.04; // fallback estimate per image
-
-    imageModels[model.id] = {
-      label: model.name,
-      chef: realChef,
+      priceIndicator: "lowest" as PriceBracket,
+      default: true,
+    },
+  },
+  imageModels: {
+    "hf/black-forest-labs/FLUX.1-schnell": {
+      label: "FLUX.1 Schnell",
+      chef: providers.unknown,
       providers: [
         {
-          ...realProvider,
-          model: model.id,
-          getCost: () => flatCost,
+          ...providers.unknown,
+          model: "hf/black-forest-labs/FLUX.1-schnell",
+          getCost: () => 0,
         },
       ],
-      priceIndicator: getPriceIndicator(totalCost, allCosts),
-    };
-  }
-
-  return imageModels;
-};
-
-const buildVideoModels = (models: GatewayLanguageModelEntry[]) => {
-  const videoModels: Record<string, TersaVideoModel> = {};
-
-  const allCosts = models.map((model) => {
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-    return inputPrice + outputPrice;
-  });
-
-  for (const model of models) {
-    const [chef] = model.id.split("/");
-
-    const inputPrice = model.pricing?.input
-      ? Number.parseFloat(model.pricing.input)
-      : 0;
-    const outputPrice = model.pricing?.output
-      ? Number.parseFloat(model.pricing.output)
-      : 0;
-
-    let realChef = providers.unknown;
-    let realProvider = providers.unknown;
-
-    if (chef in providers) {
-      realChef = providers[chef as keyof typeof providers];
-    }
-
-    if (model.specification.provider in providers) {
-      realProvider =
-        providers[model.specification.provider as keyof typeof providers];
-    }
-
-    const totalCost = inputPrice + outputPrice;
-    const flatCost = totalCost || 0.5; // fallback estimate per video
-
-    videoModels[model.id] = {
-      label: model.name,
-      chef: realChef,
+      priceIndicator: "lowest" as PriceBracket,
+      default: true,
+    },
+  },
+  videoModels: {
+    "hf/Wan-AI/Wan2.1-T2V-14B": {
+      label: "Wan 2.1 T2V",
+      chef: providers.unknown,
       providers: [
         {
-          ...realProvider,
-          model: model.id,
-          getCost: () => flatCost,
+          ...providers.unknown,
+          model: "hf/Wan-AI/Wan2.1-T2V-14B",
+          getCost: () => 0,
         },
       ],
-      priceIndicator: getPriceIndicator(totalCost, allCosts),
-    };
-  }
-
-  return videoModels;
+      priceIndicator: "lowest" as PriceBracket,
+      default: true,
+    },
+  },
 };
 
 export const GatewayProviderClient = ({
   children,
-  models,
-  imageModels,
-  videoModels,
-}: GatewayProviderClientProps) => {
-  const textModels = buildTextModels(models);
-  const imageModelMap = buildImageModels(imageModels);
-  const videoModelMap = buildVideoModels(videoModels);
-
+}: {
+  children: ReactNode;
+  models?: unknown[];
+  imageModels?: unknown[];
+  videoModels?: unknown[];
+}) => {
   return (
-    <GatewayContext.Provider
-      value={{
-        models: textModels,
-        imageModels: imageModelMap,
-        videoModels: videoModelMap,
-      }}
-    >
+    <GatewayContext.Provider value={HARDCODED_MODELS}>
       {children}
     </GatewayContext.Provider>
   );

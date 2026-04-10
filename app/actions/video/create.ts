@@ -1,11 +1,6 @@
 "use server";
 
-import { gateway } from "@ai-sdk/gateway";
-import { put } from "@vercel/blob";
-import { experimental_generateVideo as generateVideo } from "ai";
-import { nanoid } from "nanoid";
 import { parseError } from "@/lib/error/parse";
-import { assertBlobUrl } from "@/lib/url";
 
 interface GenerateVideoActionProps {
   modelId: string;
@@ -14,42 +9,28 @@ interface GenerateVideoActionProps {
 }
 
 export const generateVideoAction = async ({
-  modelId,
   prompt,
   image,
 }: GenerateVideoActionProps): Promise<
-  | {
-      url: string;
-      type: string;
-    }
-  | {
-      error: string;
-    }
+  { url: string; type: string } | { error: string }
 > => {
   try {
-    const validatedImage = image ? assertBlobUrl(image).toString() : undefined;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
-    const result = await generateVideo({
-      model: gateway.videoModel(modelId),
-      prompt: validatedImage ? { image: validatedImage, text: prompt } : prompt,
+    const response = await fetch(`${baseUrl}/api/generate-video`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, image }),
     });
 
-    const blob = await put(
-      `${nanoid()}.mp4`,
-      result.video.uint8Array.buffer as ArrayBuffer,
-      {
-        access: "public",
-        contentType: "video/mp4",
-      }
-    );
+    const data = await response.json();
 
-    return {
-      url: blob.url,
-      type: "video/mp4",
-    };
+    if (!response.ok || data.error) {
+      return { error: data.error || "Erro ao gerar vídeo" };
+    }
+
+    return { url: data.url, type: data.type };
   } catch (error) {
-    const message = parseError(error);
-
-    return { error: message };
+    return { error: parseError(error) };
   }
 };
