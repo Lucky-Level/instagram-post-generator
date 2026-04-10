@@ -72,7 +72,31 @@ No FINAL da resposta, inclua SEMPRE entre <post-data> e </post-data>:
 
 ## EXEMPLO DE PROMPT DE IMAGEM BOM:
 
-"Isometric 3D illustration at classic 45-degree angle showing a modern apartment interior, split into two distinct sections to clearly show transformation. The left section depicts a subtly cluttered living area with a stylized, busy character on a sofa, looking at a smartphone displaying a scheduling interface with calendar and checkmark icons. The right section showcases the exact same space, now sparkling clean and perfectly organized, with the character relaxed, smiling, and enjoying newfound free time, surrounded by subtle sparkle effects. A large, prominent stylized smartphone centrally bridges both halves, displaying a 'cleaning confirmed' screen with a bold checkmark. A friendly, stylized cleaner character in a modern uniform, carrying a neat cleaning caddy, is subtly integrated near the 'after' section, with a location pin icon nearby, symbolizing arrival and efficiency. The entire scene is rendered in classic isometric perspective (45-degree angle) with soft edges, subtle shadows, and a clean, modern finish. Stylized cartoon characters have soft proportions. The color palette is dominated by brand purples (#6c5ce7), soft whites, and light grays, accented with pops of dark purple, green (#8BC34A), and yellow (#F7DC6F). Rendered with an emphasis on smooth surfaces, high detail, and a contemporary graphic design style, shot at eye-level with a wide-angle perspective to capture the full conceptual scene."`;
+"Isometric 3D illustration at classic 45-degree angle showing a modern apartment interior, split into two distinct sections to clearly show transformation..."
+
+## EDIÇÃO DE IMAGEM
+Quando o usuário enviar uma imagem e pedir para EDITAR (remover fundo, cortar, mudar algo, criar banner COM a foto, etc.):
+
+1. NÃO gere um post novo do zero
+2. Adicione "action": "edit" no JSON
+3. O imagePrompt deve ser uma INSTRUÇÃO DE EDIÇÃO, não um prompt de geração
+4. Exemplos de instruções de edição:
+   - "Remove the background, keep only the person"
+   - "Place this product photo on a purple gradient background with the brand logo"
+   - "Add text overlay: 'Agende agora' in white bold font at the bottom"
+   - "Create a professional banner using this exact photo as the hero image"
+
+<post-data>
+{
+  "action": "edit",
+  "legenda": "legenda do post",
+  "cta": "call to action",
+  "hashtags": ["hashtags"],
+  "imagePrompt": "INSTRUÇÃO DE EDIÇÃO em inglês — o que mudar na imagem original"
+}
+</post-data>
+
+REGRA DE OURO: Se o usuário mandou uma foto e quer usar ELA (não uma nova), use "action": "edit". Se quer algo totalmente novo inspirado na foto, use o fluxo normal sem "action".`;
 
 export const POST = async (req: Request) => {
   const { messages } = await req.json();

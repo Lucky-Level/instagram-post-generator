@@ -29,6 +29,7 @@ import { uploadFile } from "@/lib/upload";
 
 interface PostData {
   type?: "video";
+  action?: "edit";
   legenda: string;
   cta: string;
   hashtags: string[];
@@ -63,14 +64,22 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
     base64?: string;
   } | null>(null);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const referenceImagesRef = useRef<string[]>([]);
   const [showTemplates, setShowTemplates] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setNodes, setEdges, fitView } = useReactFlow();
 
+  // Keep ref in sync so callbacks always get the latest value
+  useEffect(() => {
+    referenceImagesRef.current = referenceImages;
+  }, [referenceImages]);
+
   const createPipeline = useCallback(
     async (data: PostData) => {
       setGenerating(true);
+      const currentRefs = referenceImagesRef.current;
+      console.log(`[Pipeline] Starting with ${currentRefs.length} reference images`);
 
       try {
         const isCarousel = data.slides && data.slides.length > 0;
@@ -142,10 +151,11 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
           for (let i = 0; i < slides.length; i++) {
             toast.info(`Gerando imagem ${i + 1}/${slides.length}...`);
 
+            const refs = referenceImagesRef.current;
             const result = await generateImageAction({
               prompt: slides[i].imagePrompt,
               modelId: "gemini",
-              referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
+              referenceImages: refs.length > 0 ? refs : undefined,
             });
 
             if (!("error" in result)) {
@@ -201,13 +211,34 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
           setTimeout(() => fitView({ padding: 0.3 }), 300);
 
           if (!isVideo) {
-            toast.info("Gerando imagem com FLUX...");
+            const isEdit = data.action === "edit";
+            const refs = referenceImagesRef.current;
 
-            const imageResult = await generateImageAction({
-              prompt: data.imagePrompt,
-              modelId: "gemini",
-              referenceImages: referenceImages.length > 0 ? referenceImages : undefined,
-            });
+            let imageResult: { url: string; type: string; description: string } | { error: string };
+
+            if (isEdit && refs.length > 0) {
+              toast.info("Editando imagem...");
+              const editRes = await fetch("/api/edit-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  imageBase64: refs[refs.length - 1],
+                  action: "edit",
+                  prompt: data.imagePrompt,
+                }),
+              });
+              const editData = await editRes.json();
+              imageResult = editRes.ok
+                ? { url: editData.url, type: editData.type, description: data.imagePrompt }
+                : { error: editData.error };
+            } else {
+              toast.info(refs.length > 0 ? "Gerando com referências..." : "Gerando imagem...");
+              imageResult = await generateImageAction({
+                prompt: data.imagePrompt,
+                modelId: "gemini",
+                referenceImages: refs.length > 0 ? refs : undefined,
+              });
+            }
 
             if ("error" in imageResult) {
               toast.error(`Erro na imagem: ${imageResult.error}`);
@@ -239,7 +270,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
         setGenerating(false);
       }
     },
-    [setNodes, setEdges, fitView, referenceImages],
+    [setNodes, setEdges, fitView],
   );
 
   const { messages, sendMessage, status } = useChat({
@@ -317,7 +348,8 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(blob);
                   });
-                  setReferenceImages((prev) => [...prev, base64]);
+                  referenceImagesRef.current = [...referenceImagesRef.current, base64];
+                  setReferenceImages(referenceImagesRef.current);
                 }
               } catch {
                 // Ignore image fetch errors
@@ -343,7 +375,8 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
           reader.readAsDataURL(uploadedImage.file);
         });
 
-        setReferenceImages((prev) => [...prev, base64]);
+        referenceImagesRef.current = [...referenceImagesRef.current, base64];
+        setReferenceImages(referenceImagesRef.current);
 
         const res = await fetch("/api/analyze-image", {
           method: "POST",

@@ -17,11 +17,12 @@ async function tryGemini(
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_GENERATIVE_AI_API_KEY not set");
 
-  // Build parts: text prompt + reference images
+  // Build parts: reference images + text prompt
   const parts: Record<string, unknown>[] = [];
+  const hasReferences = referenceImages && referenceImages.length > 0;
 
   // Add reference images first (so the model sees them before the prompt)
-  if (referenceImages?.length) {
+  if (hasReferences) {
     for (const img of referenceImages) {
       const match = img.match(/^data:([^;]+);base64,(.+)$/);
       if (match) {
@@ -35,8 +36,33 @@ async function tryGemini(
     }
   }
 
-  // Add the text prompt
-  parts.push({ text: `Generate an image: ${prompt}` });
+  // When images are provided: EDIT mode (preserve the original)
+  // When no images: GENERATE mode (create from scratch)
+  if (hasReferences) {
+    parts.push({
+      text: [
+        "You MUST edit the provided image(s). Do NOT create a new image from scratch.",
+        "",
+        "STRICT RULES:",
+        "1. The output MUST be a modified version of the input image — recognizably the same image",
+        "2. Keep ALL of these EXACTLY as they are unless the user specifically asks to change them:",
+        "   - Logo, brand marks, typography, and text",
+        "   - Product appearance, shape, and details",
+        "   - Colors, style, and visual identity",
+        "   - Composition, layout, and proportions",
+        "   - People/models faces, poses, and clothing",
+        "3. Apply ONLY the specific changes requested below",
+        "4. If asked to 'remove background' → keep the subject pixel-perfect, only remove/replace the background",
+        "5. If asked to 'create a banner' → place the original image INTO the banner composition, do not redraw it",
+        "6. If asked to 'add text' → overlay text on the existing image, do not regenerate it",
+        "7. The result should look like a professional photo edit, NOT a new AI generation",
+        "",
+        `REQUESTED CHANGES: ${prompt}`,
+      ].join("\n"),
+    });
+  } else {
+    parts.push({ text: `Generate an image: ${prompt}` });
+  }
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
@@ -141,6 +167,7 @@ export const generateImageAction = async ({
 
   // If we have reference images, Gemini is the ONLY provider that can use them
   const hasReferences = referenceImages && referenceImages.length > 0;
+  console.log(`[generateImageAction] hasReferences=${hasReferences}, count=${referenceImages?.length ?? 0}`);
 
   const providers = hasReferences
     ? [
