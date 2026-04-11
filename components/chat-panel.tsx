@@ -17,6 +17,7 @@ import { nanoid } from "nanoid";
 import Image from "next/image";
 import {
   type ChangeEvent,
+  createElement,
   type FormEvent,
   type KeyboardEvent,
   useCallback,
@@ -632,16 +633,14 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
               "w-full space-y-2",
               fullscreen && "max-w-lg"
             )}>
-              {templates.slice(0, fullscreen ? 4 : 8).map((t) => {
-                const TemplateIcon = t.icon;
-                return (
+              {templates.slice(0, fullscreen ? 4 : 8).map((t) => (
                   <button
                     key={t.id}
                     onClick={() => handleTemplateClick(t)}
                     className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left text-sm hover:bg-secondary/60 hover:border-primary/20 transition-all group"
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                      <TemplateIcon size={16} />
+                      {createElement(t.icon, { size: 16 })}
                     </span>
                     <div className="flex flex-col gap-0.5 min-w-0">
                       <span className="font-medium text-foreground text-[13px]">{t.title}</span>
@@ -650,8 +649,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
                       </span>
                     </div>
                   </button>
-                );
-              })}
+                ))}
             </div>
           </div>
         )}
