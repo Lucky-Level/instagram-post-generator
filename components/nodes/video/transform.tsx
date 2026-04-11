@@ -1,18 +1,15 @@
 import { getIncomers, useReactFlow } from "@xyflow/react";
 import {
-  ClockIcon,
   DownloadIcon,
   Loader2Icon,
-  PlayIcon,
-  RotateCcwIcon,
+  VideoIcon,
 } from "lucide-react";
-import { type ChangeEventHandler, type ComponentProps, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { generateVideoAction } from "@/app/actions/video/create";
 import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
@@ -104,84 +101,63 @@ export const VideoTransform = ({
     }
   };
 
-  const toolbar: ComponentProps<typeof NodeLayout>["toolbar"] = [
-    {
-      children: (
+  const incomers = getIncomers({ id }, getNodes(), getEdges());
+  const inputsList = incomers.map((n) => ({
+    label:
+      n.type === "text"
+        ? "Text prompt"
+        : n.type === "image"
+          ? "Reference image"
+          : "Input",
+    source: (n.data as Record<string, unknown>)?.title as string || n.type || "",
+  }));
+
+  return (
+    <NodeLayout
+      data={data}
+      id={id}
+      title={title}
+      subtitle={modelId}
+      type={type}
+      icon={VideoIcon}
+      iconColor="#878792"
+      modelSelector={
         <ModelSelector
-          className="w-[200px] rounded-full"
+          className="w-full"
           key={id}
           onChange={(value) => updateNodeData(id, { model: value })}
           options={videoModels}
           value={modelId}
         />
-      ),
-    },
-    loading
-      ? {
-          tooltip: "Generating...",
-          children: (
-            <Button className="rounded-full" disabled size="icon">
-              <Loader2Icon className="animate-spin" size={12} />
-            </Button>
-          ),
-        }
-      : {
-          tooltip: data.generated?.url ? "Regenerate" : "Generate",
-          children: (
+      }
+      onRun={handleGenerate}
+      running={loading}
+      showInstructions
+      onInstructionsChange={(val) => updateNodeData(id, { instructions: val })}
+      inputs={inputsList}
+      footer={
+        data.generated?.url ? (
+          <div className="flex items-center gap-1">
             <Button
-              className="rounded-full"
-              disabled={loading}
-              onClick={handleGenerate}
-              size="icon"
+              size="sm"
+              variant="ghost"
+              onClick={() => download(data.generated, id, "mp4")}
             >
-              {data.generated?.url ? (
-                <RotateCcwIcon size={12} />
-              ) : (
-                <PlayIcon size={12} />
-              )}
+              <DownloadIcon size={12} />
             </Button>
-          ),
-        },
-  ];
-
-  if (data.generated?.url) {
-    toolbar.push({
-      tooltip: "Download",
-      children: (
-        <Button
-          className="rounded-full"
-          onClick={() => download(data.generated, id, "mp4")}
-          size="icon"
-          variant="ghost"
-        >
-          <DownloadIcon size={12} />
-        </Button>
-      ),
-    });
-  }
-
-  if (data.updatedAt) {
-    toolbar.push({
-      tooltip: `Last updated: ${new Intl.DateTimeFormat("en-US", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date(data.updatedAt))}`,
-      children: (
-        <Button className="rounded-full" size="icon" variant="ghost">
-          <ClockIcon size={12} />
-        </Button>
-      ),
-    });
-  }
-
-  const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
-    event
-  ) => updateNodeData(id, { instructions: event.target.value });
-
-  return (
-    <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
+            {data.updatedAt && (
+              <span className="text-[11px] text-muted-foreground">
+                {new Intl.DateTimeFormat("en-US", {
+                  timeStyle: "short",
+                }).format(new Date(data.updatedAt))}
+              </span>
+            )}
+          </div>
+        ) : undefined
+      }
+    >
       {loading ? (
-        <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center rounded-b-xl">
+        <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center">
           <Loader2Icon
             className="size-4 animate-spin text-muted-foreground"
             size={16}
@@ -189,17 +165,16 @@ export const VideoTransform = ({
         </Skeleton>
       ) : null}
       {!(loading || data.generated?.url) && (
-        <div className="flex aspect-video w-full items-center justify-center rounded-b-xl bg-secondary">
-          <p className="text-muted-foreground text-sm">
-            Press <PlayIcon className="inline -translate-y-px" size={12} /> to
-            generate video
+        <div className="flex aspect-video w-full items-center justify-center bg-secondary/30">
+          <p className="text-xs text-muted-foreground">
+            Video will appear here
           </p>
         </div>
       )}
       {typeof data.generated?.url === "string" && !loading ? (
         <video
           autoPlay
-          className="w-full rounded-b-xl object-cover"
+          className="w-full object-cover"
           height={data.height ?? 450}
           loop
           muted
@@ -208,12 +183,6 @@ export const VideoTransform = ({
           width={data.width ?? 800}
         />
       ) : null}
-      <Textarea
-        className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
-        onChange={handleInstructionsChange}
-        placeholder="Enter instructions"
-        value={data.instructions ?? ""}
-      />
     </NodeLayout>
   );
 };

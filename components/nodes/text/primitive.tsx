@@ -1,5 +1,6 @@
 import type { Editor, EditorEvents } from "@tiptap/core";
 import { useReactFlow } from "@xyflow/react";
+import { TypeIcon } from "lucide-react";
 import { useRef } from "react";
 import { EditorProvider } from "@/components/kibo-ui/editor";
 import { cn } from "@/lib/utils";
@@ -32,8 +33,16 @@ export const TextPrimitive = ({
   };
 
   return (
-    <NodeLayout className="p-0" data={data} id={id} title={title} type={type}>
-      <div className="nowheel h-full max-h-[30rem] overflow-auto rounded-3xl">
+    <NodeLayout
+      className="p-0"
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+      icon={TypeIcon}
+      iconColor="#e54d6b"
+    >
+      <div className="nowheel h-full max-h-[30rem] overflow-auto">
         <EditorProvider
           className={cn(
             "prose prose-sm dark:prose-invert size-full p-6",

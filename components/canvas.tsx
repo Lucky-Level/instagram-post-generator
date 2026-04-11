@@ -18,11 +18,13 @@ import {
 import { BoxSelectIcon, PlusIcon } from "lucide-react";
 import { nanoid } from "nanoid";
 import type { MouseEvent, MouseEventHandler } from "react";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useDebouncedCallback } from "use-debounce";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { loadCanvas, saveCanvas } from "@/lib/canvas-storage";
+import { canvasToolAtom } from "@/lib/canvas-tool";
 import { isValidSourceTarget } from "@/lib/xyflow";
 import { NodeDropzoneProvider } from "@/providers/node-dropzone";
 import { NodeOperationsProvider } from "@/providers/node-operations";
@@ -65,6 +67,7 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
     updateNode,
   } = useReactFlow();
   const analytics = useAnalytics();
+  const activeTool = useAtomValue(canvasToolAtom);
 
   useEffect(() => {
     const stored = loadCanvas();
@@ -372,6 +375,8 @@ export const Canvas = ({ children, ...props }: ReactFlowProps) => {
               onDoubleClick={addDropNode}
               onEdgesChange={handleEdgesChange}
               onNodesChange={handleNodesChange}
+              panOnDrag={activeTool === "pan" ? [0, 1, 2] : [1, 2]}
+              selectionOnDrag={activeTool === "select"}
               {...restProps}
             >
               {children}

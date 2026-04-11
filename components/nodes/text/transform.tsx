@@ -2,18 +2,13 @@ import { useChat } from "@ai-sdk/react";
 import { getIncomers, useReactFlow } from "@xyflow/react";
 import { DefaultChatTransport, type FileUIPart } from "ai";
 import {
-  ClockIcon,
+  BrainCircuitIcon,
   CopyIcon,
-  PlayIcon,
-  RotateCcwIcon,
   SquareIcon,
 } from "lucide-react";
 import {
-  type ChangeEventHandler,
-  type ComponentProps,
   useCallback,
   useEffect,
-  useMemo,
 } from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -31,7 +26,6 @@ import {
 import { NodeLayout } from "@/components/nodes/layout";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useReasoning } from "@/hooks/use-reasoning";
 import { handleError } from "@/lib/error/handle";
@@ -101,6 +95,8 @@ export const TextTransform = ({
     },
   });
 
+  const isRunning = status === "submitted" || status === "streaming";
+
   const handleGenerate = useCallback(async () => {
     const incomers = getIncomers({ id }, getNodes(), getEdges());
     const textPrompts = getTextFromTextNodes(incomers);
@@ -168,111 +164,18 @@ export const TextTransform = ({
     setMessages,
   ]);
 
-  const handleInstructionsChange: ChangeEventHandler<HTMLTextAreaElement> = (
-    event
-  ) => updateNodeData(id, { instructions: event.target.value });
+  const handleRun = useCallback(() => {
+    if (isRunning) {
+      stop();
+    } else {
+      handleGenerate();
+    }
+  }, [isRunning, stop, handleGenerate]);
 
   const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
   }, []);
-
-  const toolbar = useMemo(() => {
-    const items: ComponentProps<typeof NodeLayout>["toolbar"] = [];
-
-    items.push({
-      children: (
-        <ModelSelector
-          className="w-[200px] rounded-full"
-          key={id}
-          onChange={(value) => updateNodeData(id, { model: value })}
-          options={models}
-          value={modelId}
-        />
-      ),
-    });
-
-    if (status === "submitted" || status === "streaming") {
-      items.push({
-        tooltip: "Stop",
-        children: (
-          <Button className="rounded-full" onClick={stop} size="icon">
-            <SquareIcon size={12} />
-          </Button>
-        ),
-      });
-    } else if (messages.length || data.generated?.text) {
-      const text = messages.length
-        ? messages
-            .filter((message) => message.role === "assistant")
-            .map(
-              (message) =>
-                message.parts.find((part) => part.type === "text")?.text ?? ""
-            )
-            .join("\n")
-        : data.generated?.text;
-
-      items.push({
-        tooltip: "Regenerate",
-        children: (
-          <Button className="rounded-full" onClick={handleGenerate} size="icon">
-            <RotateCcwIcon size={12} />
-          </Button>
-        ),
-      });
-      items.push({
-        tooltip: "Copy",
-        children: (
-          <Button
-            className="rounded-full"
-            disabled={!text}
-            onClick={() => handleCopy(text ?? "")}
-            size="icon"
-            variant="ghost"
-          >
-            <CopyIcon size={12} />
-          </Button>
-        ),
-      });
-    } else {
-      items.push({
-        tooltip: "Generate",
-        children: (
-          <Button className="rounded-full" onClick={handleGenerate} size="icon">
-            <PlayIcon size={12} />
-          </Button>
-        ),
-      });
-    }
-
-    if (data.updatedAt) {
-      items.push({
-        tooltip: `Last updated: ${new Intl.DateTimeFormat("en-US", {
-          dateStyle: "short",
-          timeStyle: "short",
-        }).format(new Date(data.updatedAt))}`,
-        children: (
-          <Button className="rounded-full" size="icon" variant="ghost">
-            <ClockIcon size={12} />
-          </Button>
-        ),
-      });
-    }
-
-    return items;
-  }, [
-    data.generated?.text,
-    data.updatedAt,
-    handleGenerate,
-    updateNodeData,
-    modelId,
-    id,
-    messages,
-    status,
-    stop,
-    handleCopy,
-    models,
-  ]);
 
   const nonUserMessages = messages.filter((message) => message.role !== "user");
 
@@ -286,9 +189,77 @@ export const TextTransform = ({
     }
   }, [messages, reasoning, status, setReasoning]);
 
+  const incomers = getIncomers({ id }, getNodes(), getEdges());
+  const inputsList = incomers.map((n) => ({
+    label:
+      n.type === "text"
+        ? "Text prompt"
+        : n.type === "image"
+          ? "Reference image"
+          : "Input",
+    source: (n.data as Record<string, unknown>)?.title as string || n.type || "",
+  }));
+
+  const generatedText = messages.length
+    ? messages
+        .filter((message) => message.role === "assistant")
+        .map(
+          (message) =>
+            message.parts.find((part) => part.type === "text")?.text ?? ""
+        )
+        .join("\n")
+    : data.generated?.text;
+
   return (
-    <NodeLayout data={data} id={id} title={title} toolbar={toolbar} type={type}>
-      <div className="nowheel h-full max-h-[30rem] flex-1 overflow-auto rounded-t-3xl rounded-b-xl bg-secondary p-4">
+    <NodeLayout
+      data={data}
+      id={id}
+      title={title}
+      subtitle={modelId}
+      type={type}
+      icon={BrainCircuitIcon}
+      iconColor="#a0a0a0"
+      modelSelector={
+        <ModelSelector
+          className="w-full"
+          key={id}
+          onChange={(value) => updateNodeData(id, { model: value })}
+          options={models}
+          value={modelId}
+        />
+      }
+      onRun={handleRun}
+      running={isRunning}
+      showInstructions
+      onInstructionsChange={(val) => updateNodeData(id, { instructions: val })}
+      inputs={inputsList}
+      footer={
+        <div className="flex items-center gap-1">
+          {generatedText && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleCopy(generatedText)}
+            >
+              <CopyIcon size={12} />
+            </Button>
+          )}
+          {isRunning && (
+            <Button size="sm" variant="ghost" onClick={stop}>
+              <SquareIcon size={12} />
+            </Button>
+          )}
+          {data.updatedAt && (
+            <span className="text-[11px] text-muted-foreground">
+              {new Intl.DateTimeFormat("en-US", {
+                timeStyle: "short",
+              }).format(new Date(data.updatedAt))}
+            </span>
+          )}
+        </div>
+      }
+    >
+      <div className="nowheel h-full max-h-[30rem] flex-1 overflow-auto bg-secondary/30 p-4">
         {status === "submitted" && (
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-60 animate-pulse rounded-lg" />
@@ -303,10 +274,9 @@ export const TextTransform = ({
         ) : null}
         {!(data.generated?.text || nonUserMessages.length) &&
           status !== "submitted" && (
-            <div className="flex aspect-video w-full items-center justify-center bg-secondary">
-              <p className="text-muted-foreground text-sm">
-                Press <PlayIcon className="inline -translate-y-px" size={12} />{" "}
-                to generate text
+            <div className="flex aspect-video w-full items-center justify-center">
+              <p className="text-xs text-muted-foreground">
+                Text will appear here
               </p>
             </div>
           )}
@@ -354,12 +324,6 @@ export const TextTransform = ({
             </Message>
           ))}
       </div>
-      <Textarea
-        className="shrink-0 resize-none rounded-none border-none bg-transparent! shadow-none focus-visible:ring-0"
-        onChange={handleInstructionsChange}
-        placeholder="Enter instructions"
-        value={data.instructions ?? ""}
-      />
       <ReasoningTunnel.In>
         {messages.flatMap((message) =>
           message.parts

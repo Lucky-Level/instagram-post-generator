@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, VideoIcon } from "lucide-react";
 import { useState } from "react";
 import {
   Dropzone,
@@ -56,7 +56,14 @@ export const VideoPrimitive = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} type={type}>
+    <NodeLayout
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+      icon={VideoIcon}
+      iconColor="#878792"
+    >
       {isUploading ? (
         <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center">
           <Loader2Icon

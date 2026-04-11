@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { Loader2Icon } from "lucide-react";
+import { ImageIcon, Loader2Icon } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { describeAction } from "@/app/actions/image/describe";
@@ -67,7 +67,14 @@ export const ImagePrimitive = ({
   };
 
   return (
-    <NodeLayout data={data} id={id} title={title} type={type}>
+    <NodeLayout
+      data={data}
+      id={id}
+      title={title}
+      type={type}
+      icon={ImageIcon}
+      iconColor="#e54d6b"
+    >
       {isUploading ? (
         <Skeleton className="flex aspect-video w-full animate-pulse items-center justify-center">
           <Loader2Icon
