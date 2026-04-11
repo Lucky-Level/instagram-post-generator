@@ -573,7 +573,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
     setShowTemplates(false);
   };
 
-  const w = fullscreen ? "w-full max-w-2xl mx-auto" : "w-80 shrink-0";
+  const w = fullscreen ? "w-full max-w-2xl mx-auto" : "w-80 shrink-0 max-md:w-full";
 
   // Find the last assistant message to check if it's a confirmation
   const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant");
@@ -592,40 +592,61 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
 
   return (
     <div className={`flex h-full flex-col border-r border-border bg-background ${w}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="size-2 rounded-full bg-primary" />
-          <h2 className="font-medium text-sm">Post Agent</h2>
+      {/* Header — hidden in fullscreen (cleaner look), shown in sidebar */}
+      {!fullscreen && (
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="size-2 rounded-full bg-primary" />
+            <h2 className="font-medium text-sm">Post Agent</h2>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {showTemplates && messages.length === 0 && (
-          <div className="space-y-4">
-            <div className="text-center text-muted-foreground text-sm pt-8 pb-2">
-              <p className="font-normal text-foreground text-lg tracking-tight">
+          <div className={cn("space-y-6", fullscreen && "flex flex-col items-center justify-center min-h-full")}>
+            {/* Greeting — Pletor style */}
+            <div className={cn("text-center pt-4 pb-2", fullscreen && "pt-0")}>
+              <div className="inline-flex items-center gap-2 mb-3">
+                <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="size-3 rounded-full bg-primary" />
+                </div>
+              </div>
+              <p className={cn(
+                "font-normal text-foreground tracking-tight",
+                fullscreen ? "text-2xl sm:text-[30px]" : "text-lg"
+              )}>
                 O que quer criar?
               </p>
-              <p className="text-xs mt-1.5 text-muted-foreground">
-                Selecione um template ou descreva sua ideia
+              <p className={cn(
+                "mt-2 text-muted-foreground",
+                fullscreen ? "text-sm" : "text-xs"
+              )}>
+                Descreva sua ideia ou escolha um template para comecar
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {templates.map((t) => {
+
+            {/* Template chips — Pletor suggestion style */}
+            <div className={cn(
+              "w-full space-y-2",
+              fullscreen && "max-w-lg"
+            )}>
+              {templates.slice(0, fullscreen ? 4 : 8).map((t) => {
                 const Icon = t.icon;
                 return (
                   <button
                     key={t.id}
                     onClick={() => handleTemplateClick(t)}
-                    className="flex flex-col items-start gap-2 rounded-lg border border-border p-3 text-left text-xs hover:bg-secondary/80 hover:border-primary/30 transition-all"
+                    className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left text-sm hover:bg-secondary/60 hover:border-primary/20 transition-all group"
                   >
-                    <Icon className="size-4 text-primary" />
-                    <span className="font-medium text-foreground text-[13px]">{t.title}</span>
-                    <span className="text-muted-foreground leading-tight text-[11px]">
-                      {t.description}
-                    </span>
+                    <Icon className="size-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="font-medium text-foreground text-[13px]">{t.title}</span>
+                      <span className="text-muted-foreground text-[11px] leading-tight truncate">
+                        {t.description}
+                      </span>
+                    </div>
                   </button>
                 );
               })}
@@ -779,7 +800,10 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
       )}
 
       {/* Input area — Pletor style */}
-      <div className="border-t border-border p-3 space-y-2">
+      <div className={cn(
+        "border-t border-border p-3 space-y-2",
+        fullscreen && "px-4 pb-4 sm:pb-6"
+      )}>
         <form onSubmit={handleSubmit} className="relative">
           <input
             ref={fileInputRef}
@@ -793,14 +817,20 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Descreva o que quer criar..."
-            className="w-full min-h-[44px] max-h-32 resize-none rounded-xl border border-border bg-secondary/50 px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50"
+            className={cn(
+              "w-full resize-none rounded-xl border border-border bg-secondary/50 px-4 py-3 pr-12 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50",
+              fullscreen ? "min-h-[52px] max-h-40" : "min-h-[44px] max-h-32"
+            )}
             rows={1}
             disabled={isStreaming || generating}
           />
           <button
             type="submit"
             disabled={(!input.trim() && !uploadedImage) || isStreaming || generating}
-            className="absolute right-2 bottom-2 size-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-30 hover:bg-primary/90 transition-colors"
+            className={cn(
+              "absolute right-2 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-30 hover:bg-primary/90 transition-colors",
+              fullscreen ? "bottom-2.5 size-9" : "bottom-2 size-8"
+            )}
           >
             <ArrowUpIcon className="size-4" />
           </button>
