@@ -11,9 +11,12 @@ interface PostEditorModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (dataUrl: string) => void;
+  headline?: string;
+  subtitle?: string;
+  cta?: string;
 }
 
-export function PostEditorModal({ imageUrl, open, onClose, onSave }: PostEditorModalProps) {
+export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta }: PostEditorModalProps) {
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [displayWidth, setDisplayWidth] = useState(540);

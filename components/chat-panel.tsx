@@ -49,6 +49,8 @@ interface PostData {
   cta: string;
   hashtags: string[];
   imagePrompt: string;
+  headline?: string;
+  subtitle?: string;
   slides?: { text: string; imagePrompt: string }[];
 }
 
@@ -83,6 +85,9 @@ interface GeneratedImage {
   url: string;
   description?: string;
   platform?: string;
+  headline?: string;
+  subtitle?: string;
+  cta?: string;
 }
 
 interface ChatPanelProps {
@@ -109,7 +114,14 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // Track generated images per assistant message so they render inline in chat
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
-  const [editorImage, setEditorImage] = useState<{ msgId: string; idx: number; url: string } | null>(null);
+  const [editorImage, setEditorImage] = useState<{
+    msgId: string;
+    idx: number;
+    url: string;
+    headline?: string;
+    subtitle?: string;
+    cta?: string;
+  } | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
 
@@ -295,7 +307,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                       : n,
                   ),
                 );
-                addChatImage({ url: result.url, description: result.description });
+                addChatImage({ url: result.url, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta });
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -438,7 +450,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     : n,
                 ),
               );
-              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square" });
+              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta });
               updateStep("media-node", "done");
 
               // Generate variants for other selected platform formats
@@ -803,7 +815,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         {/* Hover overlay with Edit + Download */}
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
                           <button
-                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url })}
+                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url, headline: img.headline, subtitle: img.subtitle, cta: img.cta })}
                             className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
                             title="Edit image"
                           >
@@ -1028,6 +1040,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       {editorImage && (
         <PostEditorModal
           imageUrl={editorImage.url}
+          headline={editorImage.headline}
+          subtitle={editorImage.subtitle}
+          cta={editorImage.cta}
           open={!!editorImage}
           onClose={() => setEditorImage(null)}
           onSave={(dataUrl) => {
