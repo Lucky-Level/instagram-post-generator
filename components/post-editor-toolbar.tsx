@@ -24,6 +24,16 @@ interface PostEditorToolbarProps {
   activeTextProps: ActiveTextProps | null;
 }
 
+function rgbaToHex(color: string): string {
+  if (color.startsWith("#")) return color;
+  const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) return "#000000";
+  const r = parseInt(match[1]).toString(16).padStart(2, "0");
+  const g = parseInt(match[2]).toString(16).padStart(2, "0");
+  const b = parseInt(match[3]).toString(16).padStart(2, "0");
+  return `#${r}${g}${b}`;
+}
+
 export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorToolbarProps) {
   const hasSelection = activeTextProps !== null;
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -232,6 +242,7 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
       <Popover>
         <PopoverTrigger asChild>
           <button
+            type="button"
             disabled={!hasSelection}
             className={cn(
               "flex size-8 items-center justify-center rounded-md border text-xs font-bold transition-colors hover:bg-secondary disabled:opacity-40 disabled:pointer-events-none",
@@ -269,6 +280,7 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
       <Popover>
         <PopoverTrigger asChild>
           <button
+            type="button"
             disabled={!hasSelection}
             className={cn(
               "flex size-8 items-center justify-center rounded-md border text-xs font-bold transition-colors hover:bg-secondary disabled:opacity-40 disabled:pointer-events-none",
@@ -305,7 +317,7 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
           <div className="space-y-1">
             <span className="text-xs text-muted-foreground">Cor</span>
             <HexColorPicker
-              color={activeTextProps?.shadowColor ?? "rgba(0,0,0,0.6)"}
+              color={rgbaToHex(activeTextProps?.shadowColor ?? "#000000")}
               onChange={(color) => update({ shadowColor: color })}
               style={{ width: "100%" }}
             />
@@ -317,16 +329,17 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
       <Popover>
         <PopoverTrigger asChild>
           <button
+            type="button"
             disabled={!hasSelection}
             className="flex size-8 items-center justify-center rounded-md border border-transparent text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
-            title="Espacamento e opacidade"
+            title="Espaçamento e opacidade"
           >
             Aa
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-48 p-3 space-y-4" align="start">
           <div className="space-y-2">
-            <p className="text-xs font-medium">Espacamento</p>
+            <p className="text-xs font-medium">Espaçamento</p>
             <div className="flex items-center gap-2">
               <input
                 type="range" min={-200} max={800} step={10}
