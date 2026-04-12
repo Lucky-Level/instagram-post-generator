@@ -1,6 +1,7 @@
 "use server";
 
 import { parseError } from "@/lib/error/parse";
+import { generateWithFacePreservation } from "./flux-kontext";
 
 interface GenerateImageActionProps {
   prompt: string;
@@ -164,6 +165,19 @@ export const generateImageAction = async ({
   ]
     .filter(Boolean)
     .join("\n");
+
+  // Smart routing: if reference images provided AND Replicate token exists, use FLUX Kontext Pro
+  if (referenceImages?.length && process.env.REPLICATE_API_TOKEN) {
+    const refImage = referenceImages[0];
+    const result = await generateWithFacePreservation({
+      prompt: fullPrompt,
+      referenceImageUrl: refImage,
+    });
+    if (!("error" in result)) {
+      return result;
+    }
+    console.warn("[FLUX Kontext] Failed, falling back:", (result as { error: string }).error);
+  }
 
   // If we have reference images, Gemini is the ONLY provider that can use them
   const hasReferences = referenceImages && referenceImages.length > 0;
