@@ -206,7 +206,7 @@ const Index = () => {
                 <div className="relative flex-1">
                   <Canvas>
                     <Controls />
-                    <Toolbar />
+                    <Toolbar onToggleChat={() => setMobileChatOpen(!mobileChatOpen)} />
                   </Canvas>
                 </div>
               </>
