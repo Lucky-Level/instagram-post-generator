@@ -52,6 +52,10 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
     onClose();
   }, [onSave, onClose]);
 
+  const handleReady = useCallback(() => {
+    editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
+  }, [headline, subtitle, cta]);
+
   if (!open) return null;
 
   return (
@@ -93,9 +97,7 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
           imageUrl={imageUrl}
           displayWidth={displayWidth}
           onSelectionChange={setActiveTextProps}
-          onReady={() => {
-            editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
-          }}
+          onReady={handleReady}
         />
 
         {/* Toolbar */}
