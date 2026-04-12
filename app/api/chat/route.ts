@@ -207,7 +207,7 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
     // Fetch recent references for brand context
     const { data: refs } = await db
       .from("brand_references")
-      .select("analysis, extracted_colors, extracted_layout")
+      .select("image_url, analysis, extracted_colors, extracted_layout")
       .eq("agent_id", agentId)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -215,11 +215,19 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
     if (refs?.length) {
       // Add reference context to the brand DNA section
       brandContext += `\n\n## VISUAL REFERENCES\n`;
+      brandContext += `The user has uploaded ${refs.length} visual reference image(s) that define this brand's aesthetic.\n`;
       for (const ref of refs) {
-        if (ref.analysis) brandContext += `- ${ref.analysis}\n`;
-        if (ref.extracted_colors) brandContext += `  Colors: ${JSON.stringify(ref.extracted_colors)}\n`;
-        if (ref.extracted_layout) brandContext += `  Layout: ${ref.extracted_layout}\n`;
+        if (ref.analysis) {
+          brandContext += `- Analysis: ${ref.analysis}\n`;
+        }
+        if (ref.extracted_colors?.length) {
+          brandContext += `  Dominant colors: ${(ref.extracted_colors as string[]).join(", ")}\n`;
+        }
+        if (ref.extracted_layout) {
+          brandContext += `  Layout style: ${ref.extracted_layout}\n`;
+        }
       }
+      brandContext += `Always align your visual suggestions with this aesthetic reference.\n`;
     }
 
     return BASE_SYSTEM_PROMPT + brandContext;
