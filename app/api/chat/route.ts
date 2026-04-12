@@ -74,9 +74,45 @@ Quando o usuário aprovar o briefing, gere o bloco JSON no final da resposta.
   "cta": "call to action direto (máx 5 palavras)",
   "legenda": "hook forte + corpo + fechamento (2-4 linhas para o caption do Instagram)",
   "hashtags": ["3-5 hashtags estratégicas"],
-  "imagePrompt": "prompt técnico de 200-400 palavras em inglês descrevendo APENAS o fundo visual, SEM qualquer texto"
+  "imagePrompt": "prompt técnico de 200-400 palavras em inglês descrevendo APENAS o fundo visual, SEM qualquer texto",
+  "textStyles": {
+    "headline": {
+      "fontFamily": "Bebas Neue",
+      "strokeWidth": 3,
+      "stroke": "#000000",
+      "shadowBlur": 0,
+      "shadowOffsetX": 5,
+      "shadowOffsetY": 5,
+      "charSpacing": -20
+    },
+    "subtitle": {
+      "fontFamily": "Inter",
+      "charSpacing": 50
+    }
+  },
+  "logo": {
+    "x": 60,
+    "y": 60,
+    "width": 180
+  }
 }
 </post-data>
+
+### Regras dos textStyles:
+- Incluir sempre que tiver contexto de identidade visual (brand_kit ou referencias)
+- fontFamily DEVE ser uma das fontes disponíveis: Inter, Roboto, Open Sans, Poppins, Montserrat, DM Sans, Space Grotesk, Nunito, Raleway, Rubik, Barlow, Outfit, Plus Jakarta Sans, Playfair Display, Lora, Merriweather, Cormorant Garamond, EB Garamond, DM Serif Display, Bebas Neue, Anton, Oswald, Archivo Black, Black Ops One, Dela Gothic One, Boogaloo, Righteous, Baloo 2, Fredoka, Alfa Slab One, Permanent Marker, Pacifico, Lobster, Dancing Script, Satisfy, Caveat, Great Vibes, JetBrains Mono, Fira Code, Source Code Pro
+- strokeWidth: 0 = sem contorno, 1-5 = contorno sutil, 6-15 = contorno forte
+- shadowBlur: 0 = sombra dura (vintage/impacto), 8-15 = sombra suave (moderno/elegante)
+- charSpacing: negativo = comprimido (display pesado), positivo = espaçado (minimalista/elegante)
+- Se não souber o estilo da marca, omitir textStyles (o usuário vai ajustar no editor)
+
+### Regras do logo:
+- Incluir campo "logo" APENAS se o brand_kit contiver logo
+- Canvas é 1080x1080px
+- Posições de texto: headline y≈180, subtitle y≈680, cta y≈880
+- Logo NÃO deve sobrepor texto
+- Posições comuns: topo-esquerda {x:60,y:60}, topo-direita {x:820,y:60}, base-esquerda {x:60,y:900}
+- width: 120 (discreta) a 280 (protagonista)
 
 Para CARROSSEL: adicione "slides" como array de objetos com esta estrutura exata:
 "slides": [

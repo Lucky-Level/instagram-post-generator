@@ -35,6 +35,7 @@ import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 import { type PlatformFormat, getPlatformFormats, groupByPlatform } from "@/lib/platform-formats";
 import { PostEditorModal } from "./post-editor-modal";
+import type { ActiveTextProps } from "./post-editor";
 
 interface PipelineStep {
   id: string;
@@ -52,6 +53,12 @@ interface PostData {
   headline?: string;
   subtitle?: string;
   slides?: { text: string; imagePrompt: string }[];
+  logo?: { x: number; y: number; width: number };
+  textStyles?: {
+    headline?: Partial<ActiveTextProps>;
+    subtitle?: Partial<ActiveTextProps>;
+    cta?: Partial<ActiveTextProps>;
+  };
 }
 
 function parsePostData(text: string): PostData | null {
@@ -88,6 +95,12 @@ interface GeneratedImage {
   headline?: string;
   subtitle?: string;
   cta?: string;
+  logo?: { x: number; y: number; width: number };
+  textStyles?: {
+    headline?: Partial<ActiveTextProps>;
+    subtitle?: Partial<ActiveTextProps>;
+    cta?: Partial<ActiveTextProps>;
+  };
 }
 
 interface ChatPanelProps {
@@ -121,6 +134,8 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     headline?: string;
     subtitle?: string;
     cta?: string;
+    logo?: { x: number; y: number; width: number };
+    textStyles?: GeneratedImage["textStyles"];
   } | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
@@ -307,7 +322,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                       : n,
                   ),
                 );
-                addChatImage({ url: result.url, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta });
+                addChatImage({ url: result.url, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -450,7 +465,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     : n,
                 ),
               );
-              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta });
+              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
               updateStep("media-node", "done");
 
               // Generate variants for other selected platform formats
@@ -818,7 +833,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         {/* Hover overlay with Edit + Download */}
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
                           <button
-                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url, headline: img.headline, subtitle: img.subtitle, cta: img.cta })}
+                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url, headline: img.headline, subtitle: img.subtitle, cta: img.cta, logo: img.logo, textStyles: img.textStyles })}
                             className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
                             title="Edit image"
                           >
@@ -1048,6 +1063,10 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           cta={editorImage.cta}
           open={!!editorImage}
           agentId={agentId}
+          // TODO: pass brand logo URL (logoUrl comes from brand_kit, not available here yet)
+          logoUrl={undefined}
+          logoPosition={editorImage.logo}
+          textStyles={editorImage.textStyles}
           onClose={() => setEditorImage(null)}
           onSave={(dataUrl) => {
             const { msgId, idx } = editorImage;

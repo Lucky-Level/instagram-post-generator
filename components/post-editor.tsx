@@ -35,7 +35,18 @@ export interface PostEditorHandle {
   updateActiveText: (props: Partial<ActiveTextProps>) => void;
   deleteSelected: () => void;
   exportImage: () => string | null;
-  initWithTextLayers: (layers: { headline?: string; subtitle?: string; cta?: string }) => void;
+  initWithTextLayers: (layers: {
+    headline?: string;
+    subtitle?: string;
+    cta?: string;
+    logoUrl?: string;
+    logoPosition?: { x: number; y: number; width: number };
+    textStyles?: {
+      headline?: Partial<ActiveTextProps>;
+      subtitle?: Partial<ActiveTextProps>;
+      cta?: Partial<ActiveTextProps>;
+    };
+  }) => void;
 }
 
 interface PostEditorProps {
@@ -286,12 +297,11 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
           });
         },
 
-        initWithTextLayers: async ({ headline, subtitle, cta }) => {
+        initWithTextLayers: async ({ headline, subtitle, cta, logoUrl, logoPosition, textStyles }) => {
           const canvas = fabricCanvasRef.current;
           if (!canvas) return;
 
           const fabric = await import("fabric");
-          await loadGoogleFont("Inter");
 
           // Remove textboxes existentes para evitar duplicatas
           const existingTexts = canvas.getObjects("textbox");
@@ -299,36 +309,71 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             canvas.remove(obj);
           }
 
-          const layers = [
-            { text: headline, y: 180, fontSize: 72, bold: true },
-            { text: subtitle, y: 680, fontSize: 42, bold: false },
-            { text: cta,      y: 880, fontSize: 32, bold: false },
-          ].filter((l): l is { text: string; y: number; fontSize: number; bold: boolean } =>
-            typeof l.text === "string" && l.text.trim().length > 0
+          // Remove logos existentes
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const existingLogos = canvas.getObjects().filter((o: any) => (o as any)._isLogo);
+          for (const obj of existingLogos) {
+            canvas.remove(obj);
+          }
+
+          const layerDefs = [
+            { key: "headline" as const, text: headline, y: 180, fontSize: 72, bold: true },
+            { key: "subtitle" as const, text: subtitle, y: 680, fontSize: 42, bold: false },
+            { key: "cta" as const, text: cta, y: 880, fontSize: 32, bold: false },
+          ].filter(
+            (l): l is typeof l & { text: string } =>
+              typeof l.text === "string" && l.text.trim().length > 0,
           );
 
-          for (const layer of layers) {
+          for (const layer of layerDefs) {
+            const styleOverride = textStyles?.[layer.key] ?? {};
+            const fontFamily = styleOverride.fontFamily ?? "Inter";
+            await loadGoogleFont(fontFamily);
+
             const textbox = new fabric.Textbox(layer.text, {
               left: CANVAS_SIZE / 2,
               top: layer.y,
               originX: "center",
               originY: "center",
               width: 900,
-              fontSize: layer.fontSize,
-              fontFamily: "Inter",
-              fill: "#ffffff",
-              textAlign: "center",
-              fontWeight: layer.bold ? "bold" : "normal",
-              fontStyle: "normal",
+              fontSize: styleOverride.fontSize ?? layer.fontSize,
+              fontFamily,
+              fill: styleOverride.fill ?? "#ffffff",
+              textAlign: (styleOverride.textAlign ?? "center") as "center" | "left" | "right",
+              fontWeight: styleOverride.fontWeight ?? (layer.bold ? "bold" : "normal"),
+              fontStyle: (styleOverride.fontStyle ?? "normal") as "normal" | "italic",
+              strokeWidth: styleOverride.strokeWidth ?? 0,
+              stroke: styleOverride.stroke ?? "",
+              charSpacing: styleOverride.charSpacing ?? 0,
+              lineHeight: styleOverride.lineHeight ?? 1.16,
+              opacity: styleOverride.opacity ?? 1,
               editable: true,
               shadow: new fabric.Shadow({
-                color: "rgba(0,0,0,0.7)",
-                blur: 10,
-                offsetX: 2,
-                offsetY: 2,
+                color: styleOverride.shadowColor ?? "rgba(0,0,0,0.7)",
+                blur: styleOverride.shadowBlur ?? 10,
+                offsetX: styleOverride.shadowOffsetX ?? 2,
+                offsetY: styleOverride.shadowOffsetY ?? 2,
               }),
             });
             canvas.add(textbox);
+          }
+
+          // Inserir logo se fornecida
+          if (logoUrl && logoPosition) {
+            const logoImg = await fabric.FabricImage.fromURL(logoUrl, { crossOrigin: "anonymous" });
+            const scaleX = logoPosition.width / (logoImg.width || 1);
+            logoImg.set({
+              left: logoPosition.x,
+              top: logoPosition.y,
+              scaleX,
+              scaleY: scaleX,
+              selectable: true,
+              hasControls: true,
+              lockRotation: true,
+            });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (logoImg as any)._isLogo = true;
+            canvas.add(logoImg);
           }
 
           canvas.renderAll();

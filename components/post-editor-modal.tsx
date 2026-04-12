@@ -15,9 +15,16 @@ interface PostEditorModalProps {
   subtitle?: string;
   cta?: string;
   agentId?: string;
+  logoUrl?: string;
+  logoPosition?: { x: number; y: number; width: number };
+  textStyles?: {
+    headline?: Partial<ActiveTextProps>;
+    subtitle?: Partial<ActiveTextProps>;
+    cta?: Partial<ActiveTextProps>;
+  };
 }
 
-export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta, agentId }: PostEditorModalProps) {
+export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta, agentId, logoUrl, logoPosition, textStyles }: PostEditorModalProps) {
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [displayWidth, setDisplayWidth] = useState(540);
@@ -54,8 +61,8 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
   }, [onSave, onClose]);
 
   const handleReady = useCallback(() => {
-    editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
-  }, [headline, subtitle, cta]);
+    editorRef.current?.initWithTextLayers({ headline, subtitle, cta, logoUrl, logoPosition, textStyles });
+  }, [headline, subtitle, cta, logoUrl, logoPosition, textStyles]);
 
   if (!open) return null;
 
