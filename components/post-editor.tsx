@@ -11,12 +11,23 @@ import {
 import { loadGoogleFont } from "@/lib/google-fonts";
 
 export interface ActiveTextProps {
+  // existing
   fontFamily: string;
   fontSize: number;
   fill: string;
   fontWeight: string;
   fontStyle: string;
   textAlign: string;
+  // new
+  strokeWidth: number;
+  stroke: string;
+  shadowColor: string;
+  shadowBlur: number;
+  shadowOffsetX: number;
+  shadowOffsetY: number;
+  charSpacing: number;
+  lineHeight: number;
+  opacity: number;
 }
 
 export interface PostEditorHandle {
@@ -43,6 +54,15 @@ const DEFAULT_TEXT_PROPS: ActiveTextProps = {
   fontWeight: "normal",
   fontStyle: "normal",
   textAlign: "center",
+  strokeWidth: 0,
+  stroke: "#000000",
+  shadowColor: "rgba(0,0,0,0.6)",
+  shadowBlur: 8,
+  shadowOffsetX: 2,
+  shadowOffsetY: 2,
+  charSpacing: 0,
+  lineHeight: 1.16,
+  opacity: 1,
 };
 
 export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
@@ -56,14 +76,26 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
 
     const getActiveTextProps = useCallback(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (obj: any): ActiveTextProps => ({
-        fontFamily: obj.fontFamily || "Inter",
-        fontSize: Math.round(obj.fontSize || 48),
-        fill: (obj.fill as string) || "#ffffff",
-        fontWeight: obj.fontWeight || "normal",
-        fontStyle: obj.fontStyle || "normal",
-        textAlign: obj.textAlign || "center",
-      }),
+      (obj: any): ActiveTextProps => {
+        const shadow = obj.shadow as any;
+        return {
+          fontFamily: obj.fontFamily || "Inter",
+          fontSize: Math.round(obj.fontSize || 48),
+          fill: (obj.fill as string) || "#ffffff",
+          fontWeight: obj.fontWeight || "normal",
+          fontStyle: obj.fontStyle || "normal",
+          textAlign: obj.textAlign || "center",
+          strokeWidth: obj.strokeWidth ?? 0,
+          stroke: (obj.stroke as string) || "#000000",
+          shadowColor: shadow?.color || "rgba(0,0,0,0)",
+          shadowBlur: shadow?.blur ?? 0,
+          shadowOffsetX: shadow?.offsetX ?? 0,
+          shadowOffsetY: shadow?.offsetY ?? 0,
+          charSpacing: obj.charSpacing ?? 0,
+          lineHeight: obj.lineHeight ?? 1.16,
+          opacity: obj.opacity ?? 1,
+        };
+      },
       [],
     );
 
@@ -190,7 +222,37 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             await loadGoogleFont(props.fontFamily);
           }
 
-          active.set(props);
+          // Apply direct Fabric props
+          const directProps = [
+            "fontFamily", "fontSize", "fill", "fontWeight", "fontStyle",
+            "textAlign", "strokeWidth", "stroke", "charSpacing", "lineHeight", "opacity",
+          ] as const;
+          for (const key of directProps) {
+            if (props[key] !== undefined) {
+              active.set(key as any, props[key]);
+            }
+          }
+
+          // Shadow needs a fabric.Shadow object
+          if (
+            props.shadowColor !== undefined ||
+            props.shadowBlur !== undefined ||
+            props.shadowOffsetX !== undefined ||
+            props.shadowOffsetY !== undefined
+          ) {
+            const fabric = await import("fabric");
+            const current = active.shadow as any;
+            active.set(
+              "shadow",
+              new fabric.Shadow({
+                color: props.shadowColor ?? current?.color ?? "rgba(0,0,0,0)",
+                blur: props.shadowBlur ?? current?.blur ?? 0,
+                offsetX: props.shadowOffsetX ?? current?.offsetX ?? 0,
+                offsetY: props.shadowOffsetY ?? current?.offsetY ?? 0,
+              }),
+            );
+          }
+
           canvas.renderAll();
           onSelectionChange?.(getActiveTextProps(active));
         },
