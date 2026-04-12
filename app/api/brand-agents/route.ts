@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 // GET /api/brand-agents — list all brand agents
 export async function GET() {
-  const db = createServerClient();
+  const db = await createServerClient();
   const { data, error } = await db
     .from("brand_agents")
     .select("id, name, slug, avatar_url, personality, brand_kit, total_sessions, total_assets, created_at")
@@ -18,7 +18,7 @@ export async function GET() {
 // POST /api/brand-agents — create a new brand agent
 export async function POST(req: Request) {
   const body = await req.json();
-  const db = createServerClient();
+  const db = await createServerClient();
 
   const slug = body.name
     .toLowerCase()

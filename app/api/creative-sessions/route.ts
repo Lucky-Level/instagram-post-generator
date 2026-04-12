@@ -4,7 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const db = createServerClient();
+    const db = await createServerClient();
 
     const { data, error } = await db
       .from("creative_sessions")
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const agentId = searchParams.get("agent_id");
 
-  const db = createServerClient();
+  const db = await createServerClient();
   let query = db
     .from("creative_sessions")
     .select("*, creative_assets(*)")

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // GET /api/brand-agents/:id — get a single brand agent with references
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const db = createServerClient();
+  const db = await createServerClient();
 
   const [agentRes, refsRes] = await Promise.all([
     db.from("brand_agents").select("*").eq("id", id).single(),
@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const db = createServerClient();
+  const db = await createServerClient();
 
   const { data, error } = await db
     .from("brand_agents")

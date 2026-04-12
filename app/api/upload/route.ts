@@ -16,7 +16,7 @@ export const POST = async (request: Request) => {
     const filename = `${nanoid()}.${ext}`;
     const path = `assets/${filename}`;
 
-    const db = createServerClient();
+    const db = await createServerClient();
     const { error } = await db.storage
       .from("uploads")
       .upload(path, buffer, {

@@ -98,7 +98,7 @@ async function buildSystemPrompt(agentId?: string): Promise<string> {
   if (!agentId) return BASE_SYSTEM_PROMPT;
 
   try {
-    const db = createServerClient();
+    const db = await createServerClient();
     const { data: agent } = await db
       .from("brand_agents")
       .select("name, personality, brand_kit, platform_rules")

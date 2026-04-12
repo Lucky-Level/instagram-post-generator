@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing sentiment" }, { status: 400 });
     }
 
-    const db = createServerClient();
+    const db = await createServerClient();
 
     // Save to brand_memory
     if (agentId) {
