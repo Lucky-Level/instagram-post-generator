@@ -64,6 +64,12 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
 
   const fontSize = activeTextProps?.fontSize ?? 48;
 
+  const hasStroke = (activeTextProps?.strokeWidth ?? 0) > 0;
+  const hasShadow =
+    (activeTextProps?.shadowBlur ?? 0) > 0 ||
+    Math.abs(activeTextProps?.shadowOffsetX ?? 0) > 0 ||
+    Math.abs(activeTextProps?.shadowOffsetY ?? 0) > 0;
+
   return (
     <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-2">
       {/* Add Text */}
@@ -219,6 +225,132 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
       >
         <AlignRightIcon className="size-4" />
       </ToolbarButton>
+
+      <div className="mx-0.5 h-6 w-px bg-border" />
+
+      {/* Outline toggle */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            disabled={!hasSelection}
+            className={cn(
+              "flex size-8 items-center justify-center rounded-md border text-xs font-bold transition-colors hover:bg-secondary disabled:opacity-40 disabled:pointer-events-none",
+              hasStroke ? "border-primary bg-primary/10 text-primary" : "border-transparent text-muted-foreground"
+            )}
+            title="Contorno (outline)"
+          >
+            O
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-52 p-3 space-y-3" align="start">
+          <p className="text-xs font-medium">Contorno</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-16">Espessura</span>
+            <input
+              type="range" min={0} max={20} step={1}
+              value={activeTextProps?.strokeWidth ?? 0}
+              onChange={(e) => update({ strokeWidth: Number(e.target.value) })}
+              className="flex-1"
+            />
+            <span className="text-xs w-6 text-right">{activeTextProps?.strokeWidth ?? 0}</span>
+          </div>
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">Cor</span>
+            <HexColorPicker
+              color={activeTextProps?.stroke ?? "#000000"}
+              onChange={(color) => update({ stroke: color })}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Shadow toggle */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            disabled={!hasSelection}
+            className={cn(
+              "flex size-8 items-center justify-center rounded-md border text-xs font-bold transition-colors hover:bg-secondary disabled:opacity-40 disabled:pointer-events-none",
+              hasShadow ? "border-primary bg-primary/10 text-primary" : "border-transparent text-muted-foreground"
+            )}
+            title="Sombra"
+          >
+            S
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-52 p-3 space-y-3" align="start">
+          <p className="text-xs font-medium">Sombra</p>
+          {(
+            [
+              { label: "Blur", key: "shadowBlur" as const, min: 0, max: 30 },
+              { label: "Offset X", key: "shadowOffsetX" as const, min: -20, max: 20 },
+              { label: "Offset Y", key: "shadowOffsetY" as const, min: -20, max: 20 },
+            ] as const
+          ).map(({ label, key, min, max }) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-16">{label}</span>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={1}
+                value={activeTextProps?.[key] ?? 0}
+                onChange={(e) => update({ [key]: Number(e.target.value) })}
+                className="flex-1"
+              />
+              <span className="text-xs w-6 text-right">{activeTextProps?.[key] ?? 0}</span>
+            </div>
+          ))}
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">Cor</span>
+            <HexColorPicker
+              color={activeTextProps?.shadowColor ?? "rgba(0,0,0,0.6)"}
+              onChange={(color) => update({ shadowColor: color })}
+              style={{ width: "100%" }}
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Letter-spacing + Opacity */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            disabled={!hasSelection}
+            className="flex size-8 items-center justify-center rounded-md border border-transparent text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
+            title="Espacamento e opacidade"
+          >
+            Aa
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-48 p-3 space-y-4" align="start">
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Espacamento</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="range" min={-200} max={800} step={10}
+                value={activeTextProps?.charSpacing ?? 0}
+                onChange={(e) => update({ charSpacing: Number(e.target.value) })}
+                className="flex-1"
+              />
+              <span className="text-xs w-8 text-right">{activeTextProps?.charSpacing ?? 0}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium">Opacidade</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="range" min={0} max={1} step={0.05}
+                value={activeTextProps?.opacity ?? 1}
+                onChange={(e) => update({ opacity: Number(e.target.value) })}
+                className="flex-1"
+              />
+              <span className="text-xs w-8 text-right">{Math.round((activeTextProps?.opacity ?? 1) * 100)}%</span>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <div className="mx-0.5 h-6 w-px bg-border" />
 
