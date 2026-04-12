@@ -266,15 +266,27 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
       brandContext += `Always align your visual suggestions with this aesthetic reference.\n`;
 
       // Typography DNA from positive references
-      const positiveRefs = refsData.filter((r: any) => !r.is_anti_reference);
-      const typoDna = positiveRefs
-        .filter((r: any) => r.typography_dna)
-        .map((r: any) => r.typography_dna)
+      type RefWithDna = {
+        typography_dna: {
+          style?: string;
+          effects?: string[];
+          weight?: string;
+          charSpacing?: string;
+          commercial?: string;
+          composition?: string;
+        } | null;
+        is_anti_reference?: boolean;
+      };
+
+      const refs = (refsData as RefWithDna[]).filter((r) => !r.is_anti_reference);
+      const typoDna = refs
+        .filter((r) => r.typography_dna)
+        .map((r) => r.typography_dna!)
         .slice(0, 3);
 
       if (typoDna.length > 0) {
         brandContext += `\n### DNA Tipográfico (extraído das referências)\n`;
-        typoDna.forEach((dna: any, i: number) => {
+        typoDna.forEach((dna, i) => {
           brandContext += `- Referência ${i + 1}: estilo=${dna.style}, efeitos=${(dna.effects || []).join(",")}, peso=${dna.weight}, charSpacing=${dna.charSpacing}, estilo-comercial=${dna.commercial}\n`;
         });
         brandContext += `\nUse este DNA para escolher fontFamily e textStyles condizentes com a identidade visual real da marca.\n`;
