@@ -8,8 +8,10 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CircleIcon,
+  DownloadIcon,
   Loader2Icon,
   PaperclipIcon,
+  PencilIcon,
   XCircleIcon,
   XIcon,
 } from "lucide-react";
@@ -29,6 +31,7 @@ import { toast } from "sonner";
 import { generateImageAction } from "@/app/actions/image/create";
 import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
+import { PostEditorModal } from "./post-editor-modal";
 
 interface PipelineStep {
   id: string;
@@ -102,6 +105,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // Track generated images per assistant message so they render inline in chat
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
+  const [editorImage, setEditorImage] = useState<{ msgId: string; idx: number; url: string } | null>(null);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -723,7 +727,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                   chatImages[msg.id].length === 1 ? "grid-cols-1" : "grid-cols-2"
                 )}>
                   {chatImages[msg.id].map((img, idx) => (
-                    <div key={idx} className="relative rounded-xl overflow-hidden border border-border bg-secondary/30">
+                    <div key={idx} className="group relative rounded-xl overflow-hidden border border-border bg-secondary/30">
                       <Image
                         src={img.url}
                         alt={img.description || `Imagem gerada ${idx + 1}`}
@@ -731,6 +735,28 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         height={1000}
                         className="w-full h-auto object-cover"
                       />
+                      {/* Hover overlay with Edit + Download */}
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
+                        <button
+                          onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url })}
+                          className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                          title="Edit image"
+                        >
+                          <PencilIcon className="size-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.download = `post-${idx + 1}.png`;
+                            link.href = img.url;
+                            link.click();
+                          }}
+                          className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                          title="Download image"
+                        >
+                          <DownloadIcon className="size-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -849,6 +875,25 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Post Editor Modal */}
+      {editorImage && (
+        <PostEditorModal
+          imageUrl={editorImage.url}
+          open={!!editorImage}
+          onClose={() => setEditorImage(null)}
+          onSave={(dataUrl) => {
+            const { msgId, idx } = editorImage;
+            setChatImages((prev) => {
+              const imgs = [...(prev[msgId] ?? [])];
+              if (imgs[idx]) {
+                imgs[idx] = { ...imgs[idx], url: dataUrl };
+              }
+              return { ...prev, [msgId]: imgs };
+            });
+          }}
+        />
       )}
 
       {/* Input area — Pletor style */}
