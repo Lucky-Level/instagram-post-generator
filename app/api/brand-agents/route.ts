@@ -20,6 +20,31 @@ export async function POST(req: Request) {
   const body = await req.json();
   const db = await createServerClient();
 
+  // Resolve workspace for the authenticated user
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+
+  let workspaceId: string | null = null;
+  if (user) {
+    const { data: profile } = await db
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile) {
+      const { data: membership } = await db
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("user_id", profile.id)
+        .limit(1)
+        .single();
+
+      workspaceId = membership?.workspace_id ?? null;
+    }
+  }
+
   const slug = body.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -34,6 +59,7 @@ export async function POST(req: Request) {
       personality: body.personality || {},
       brand_kit: body.brand_kit || {},
       platform_rules: body.platform_rules || {},
+      ...(workspaceId && { workspace_id: workspaceId }),
     })
     .select()
     .single();
