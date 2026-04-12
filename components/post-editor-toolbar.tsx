@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlignCenterIcon,
   AlignLeftIcon,
@@ -13,6 +13,7 @@ import {
   SparklesIcon,
   Trash2Icon,
   TypeIcon,
+  UploadIcon,
 } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -24,6 +25,7 @@ import type { ActiveTextProps, PostEditorHandle } from "./post-editor";
 interface PostEditorToolbarProps {
   editorRef: React.RefObject<PostEditorHandle | null>;
   activeTextProps: ActiveTextProps | null;
+  agentId?: string;
 }
 
 function rgbaToHex(color: string): string {
@@ -36,9 +38,11 @@ function rgbaToHex(color: string): string {
   return `#${r}${g}${b}`;
 }
 
-export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorToolbarProps) {
+export function PostEditorToolbar({ editorRef, activeTextProps, agentId }: PostEditorToolbarProps) {
   const hasSelection = activeTextProps !== null;
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [customFonts, setCustomFonts] = useState<string[]>([]);
+  const fontUploadRef = useRef<HTMLInputElement>(null);
 
   // Preload all fonts for the dropdown preview
   useEffect(() => {
@@ -74,6 +78,31 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
     [editorRef],
   );
 
+  const handleFontUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      if (agentId) formData.append("agentId", agentId);
+
+      const res = await fetch("/api/upload-font", { method: "POST", body: formData });
+      if (!res.ok) return;
+
+      const { url, fontFamily } = await res.json();
+
+      // Register in browser via FontFace API
+      const font = new FontFace(fontFamily, `url(${url})`);
+      await font.load();
+      document.fonts.add(font);
+
+      setCustomFonts((prev) => [...prev, fontFamily]);
+      e.target.value = "";
+    },
+    [agentId],
+  );
+
   const fontSize = activeTextProps?.fontSize ?? 48;
 
   const hasStroke = (activeTextProps?.strokeWidth ?? 0) > 0;
@@ -105,6 +134,28 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-56 max-h-72 overflow-y-auto p-1" align="start">
+          {customFonts.length > 0 && (
+            <div>
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Minhas Fontes
+              </p>
+              {customFonts.map((font) => (
+                <button
+                  key={font}
+                  type="button"
+                  onClick={() => update({ fontFamily: font })}
+                  className={cn(
+                    "w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-secondary transition-colors",
+                    activeTextProps?.fontFamily === font && "bg-secondary font-semibold",
+                  )}
+                  style={{ fontFamily: `"${font}", sans-serif` }}
+                >
+                  {font}
+                </button>
+              ))}
+              <div className="my-1 border-t border-border" />
+            </div>
+          )}
           {getFontCategories().map((cat) => (
             <div key={cat}>
               <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -420,6 +471,25 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
       <ToolbarButton disabled={!hasSelection} onClick={handleDelete} title="Delete selected">
         <Trash2Icon className="size-4" />
       </ToolbarButton>
+
+      {/* Upload custom font */}
+      <>
+        <input
+          ref={fontUploadRef}
+          type="file"
+          accept=".ttf,.woff,.woff2"
+          className="hidden"
+          onChange={handleFontUpload}
+        />
+        <button
+          type="button"
+          onClick={() => fontUploadRef.current?.click()}
+          title="Upload fonte customizada"
+          className="flex size-8 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <UploadIcon className="size-4" />
+        </button>
+      </>
 
       {/* Download */}
       <ToolbarButton onClick={handleDownload} title="Download PNG">

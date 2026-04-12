@@ -14,9 +14,10 @@ interface PostEditorModalProps {
   headline?: string;
   subtitle?: string;
   cta?: string;
+  agentId?: string;
 }
 
-export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta }: PostEditorModalProps) {
+export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta, agentId }: PostEditorModalProps) {
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [displayWidth, setDisplayWidth] = useState(540);
@@ -105,6 +106,7 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
           <PostEditorToolbar
             editorRef={editorRef}
             activeTextProps={activeTextProps}
+            agentId={agentId}
           />
         </div>
       </div>

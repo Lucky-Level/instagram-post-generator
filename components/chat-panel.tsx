@@ -1047,6 +1047,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           subtitle={editorImage.subtitle}
           cta={editorImage.cta}
           open={!!editorImage}
+          agentId={agentId}
           onClose={() => setEditorImage(null)}
           onSave={(dataUrl) => {
             const { msgId, idx } = editorImage;
