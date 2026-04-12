@@ -6,6 +6,7 @@ import {
   PlusIcon,
   SaveIcon,
   Settings2Icon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -62,6 +63,30 @@ const Index = () => {
     setShowAgentMenu(false);
   };
 
+  const deleteAgent = async (e: React.MouseEvent, a: AgentInfo) => {
+    e.stopPropagation();
+    if (!confirm(`Deletar "${a.name}"? Esta ação não pode ser desfeita.`)) return;
+
+    await fetch(`/api/brand-agents/${a.id}`, { method: "DELETE" });
+
+    const updated = agents.filter((ag) => ag.id !== a.id);
+    setAgents(updated);
+
+    if (agent?.id === a.id) {
+      const next = updated[0] ?? null;
+      setAgent(next);
+      if (next) {
+        localStorage.setItem("active_agent_id", next.id);
+        localStorage.setItem("active_agent_name", next.name);
+      } else {
+        localStorage.removeItem("active_agent_id");
+        localStorage.removeItem("active_agent_name");
+      }
+    }
+
+    setShowAgentMenu(false);
+  };
+
   return (
     <GatewayProvider>
       <ReactFlowProvider>
@@ -101,15 +126,23 @@ const Index = () => {
                   {showAgentMenu && (
                     <div className="absolute top-full left-0 mt-1 w-56 rounded-xl border border-border bg-background shadow-lg z-50 py-1">
                       {agents.map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={() => switchAgent(a)}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary/60 transition-colors ${
-                            a.id === agent.id ? "text-primary font-medium" : "text-foreground"
-                          }`}
-                        >
-                          {a.name}
-                        </button>
+                        <div key={a.id} className="flex items-center group">
+                          <button
+                            onClick={() => switchAgent(a)}
+                            className={`flex-1 text-left px-3 py-2 text-sm hover:bg-secondary/60 transition-colors ${
+                              a.id === agent.id ? "text-primary font-medium" : "text-foreground"
+                            }`}
+                          >
+                            {a.name}
+                          </button>
+                          <button
+                            onClick={(e) => deleteAgent(e, a)}
+                            className="opacity-0 group-hover:opacity-100 px-2 py-2 text-muted-foreground hover:text-destructive transition-all"
+                            title="Deletar agente"
+                          >
+                            <Trash2Icon className="size-3.5" />
+                          </button>
+                        </div>
                       ))}
                       <div className="border-t border-border my-1" />
                       <Link
