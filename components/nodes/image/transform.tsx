@@ -2,10 +2,11 @@ import { getIncomers, useReactFlow } from "@xyflow/react";
 import {
   DownloadIcon,
   Loader2Icon,
+  PencilIcon,
   SparklesIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { toast } from "sonner";
 import { generateImageAction } from "@/app/actions/image/create";
 import { editImageAction } from "@/app/actions/image/edit";
@@ -17,6 +18,7 @@ import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
 import { useGateway } from "@/providers/gateway/client";
+import { PostEditorModal } from "@/components/post-editor-modal";
 import { ModelSelector } from "../model-selector";
 import type { ImageNodeProps } from ".";
 
@@ -52,6 +54,7 @@ export const ImageTransform = ({
 }: ImageTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const [loading, setLoading] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const { imageModels } = useGateway();
   const modelId = data.model ?? getDefaultModel(imageModels);
   const analytics = useAnalytics();
@@ -145,6 +148,7 @@ export const ImageTransform = ({
   }));
 
   return (
+    <>
     <NodeLayout
       data={data}
       id={id}
@@ -170,6 +174,14 @@ export const ImageTransform = ({
       footer={
         data.generated?.url ? (
           <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditorOpen(true)}
+              title="Edit with text editor"
+            >
+              <PencilIcon size={12} />
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -217,5 +229,22 @@ export const ImageTransform = ({
         />
       )}
     </NodeLayout>
+      {data.generated?.url && (
+        <PostEditorModal
+          imageUrl={data.generated.url}
+          open={editorOpen}
+          onClose={() => setEditorOpen(false)}
+          onSave={(dataUrl) => {
+            updateNodeData(id, {
+              updatedAt: new Date().toISOString(),
+              generated: {
+                url: dataUrl,
+                type: "image/png",
+              },
+            });
+          }}
+        />
+      )}
+    </>
   );
 };
