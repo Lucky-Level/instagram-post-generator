@@ -112,7 +112,7 @@ async function buildSystemPrompt(agentId?: string): Promise<string> {
     const colors = bk.colors || {};
     const fonts = bk.fonts || {};
 
-    const brandContext = `
+    let brandContext = `
 
 ## BRAND DNA — ${agent.name}
 
@@ -140,6 +140,52 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
 - Mantenha o tom "${p.tone || "profissional"}" em todas as legendas
 - Adapte a linguagem visual ao público: ${p.audience || "geral"}
 `;
+
+    // Load brand memory (feedback + learned rules)
+    const { data: memories } = await db
+      .from("brand_memory")
+      .select("type, content, weight")
+      .eq("agent_id", agentId)
+      .order("weight", { ascending: false })
+      .limit(10);
+
+    if (memories?.length) {
+      brandContext += `\n\n## LEARNED PREFERENCES\n`;
+      const positives = memories.filter((m) => m.weight > 0);
+      const negatives = memories.filter((m) => m.weight < 0);
+      if (positives.length) {
+        brandContext += `User LIKES:\n`;
+        for (const m of positives) {
+          const content = typeof m.content === "string" ? JSON.parse(m.content) : m.content;
+          brandContext += `- ${content.comment || "Approved this style"}\n`;
+        }
+      }
+      if (negatives.length) {
+        brandContext += `User DISLIKES:\n`;
+        for (const m of negatives) {
+          const content = typeof m.content === "string" ? JSON.parse(m.content) : m.content;
+          brandContext += `- ${content.comment || "Rejected this style"}\n`;
+        }
+      }
+    }
+
+    // Fetch recent references for brand context
+    const { data: refs } = await db
+      .from("brand_references")
+      .select("analysis, extracted_colors, extracted_layout")
+      .eq("agent_id", agentId)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (refs?.length) {
+      // Add reference context to the brand DNA section
+      brandContext += `\n\n## VISUAL REFERENCES\n`;
+      for (const ref of refs) {
+        if (ref.analysis) brandContext += `- ${ref.analysis}\n`;
+        if (ref.extracted_colors) brandContext += `  Colors: ${JSON.stringify(ref.extracted_colors)}\n`;
+        if (ref.extracted_layout) brandContext += `  Layout: ${ref.extracted_layout}\n`;
+      }
+    }
 
     return BASE_SYSTEM_PROMPT + brandContext;
   } catch {
