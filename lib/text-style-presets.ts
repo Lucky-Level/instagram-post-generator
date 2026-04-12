@@ -1,0 +1,111 @@
+import type { ActiveTextProps } from "@/components/post-editor";
+
+export interface TextStylePreset {
+  name: string;
+  style: Partial<ActiveTextProps>;
+}
+
+export const TEXT_STYLE_PRESETS: TextStylePreset[] = [
+  {
+    name: "Impact",
+    style: {
+      fontFamily: "Bebas Neue",
+      fontSize: 96,
+      fontWeight: "normal",
+      fill: "#FFFFFF",
+      stroke: "#000000",
+      strokeWidth: 3,
+      shadowColor: "rgba(0,0,0,0.9)",
+      shadowBlur: 0,
+      shadowOffsetX: 5,
+      shadowOffsetY: 5,
+      charSpacing: -20,
+      opacity: 1,
+    },
+  },
+  {
+    name: "Elegante",
+    style: {
+      fontFamily: "Playfair Display",
+      fontSize: 72,
+      fontWeight: "bold",
+      fill: "#FFFFFF",
+      stroke: "",
+      strokeWidth: 0,
+      shadowColor: "rgba(0,0,0,0.5)",
+      shadowBlur: 12,
+      shadowOffsetX: 0,
+      shadowOffsetY: 4,
+      charSpacing: 50,
+      opacity: 1,
+    },
+  },
+  {
+    name: "Moderno",
+    style: {
+      fontFamily: "Space Grotesk",
+      fontSize: 64,
+      fontWeight: "bold",
+      fill: "#FFFFFF",
+      stroke: "",
+      strokeWidth: 0,
+      shadowColor: "rgba(0,0,0,0)",
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      charSpacing: -10,
+      opacity: 1,
+    },
+  },
+  {
+    name: "Vintage",
+    style: {
+      fontFamily: "Archivo Black",
+      fontSize: 80,
+      fontWeight: "normal",
+      fill: "#FFFFFF",
+      stroke: "#FFFFFF",
+      strokeWidth: 2,
+      shadowColor: "rgba(0,0,0,0.9)",
+      shadowBlur: 0,
+      shadowOffsetX: 6,
+      shadowOffsetY: 6,
+      charSpacing: 100,
+      opacity: 1,
+    },
+  },
+  {
+    name: "Script",
+    style: {
+      fontFamily: "Pacifico",
+      fontSize: 80,
+      fontWeight: "normal",
+      fill: "#FFFFFF",
+      stroke: "",
+      strokeWidth: 0,
+      shadowColor: "rgba(0,0,0,0.6)",
+      shadowBlur: 8,
+      shadowOffsetX: 2,
+      shadowOffsetY: 4,
+      charSpacing: 0,
+      opacity: 1,
+    },
+  },
+  {
+    name: "Minimal",
+    style: {
+      fontFamily: "Inter",
+      fontSize: 56,
+      fontWeight: "normal",
+      fill: "#FFFFFF",
+      stroke: "",
+      strokeWidth: 0,
+      shadowColor: "rgba(0,0,0,0)",
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+      charSpacing: 200,
+      opacity: 0.9,
+    },
+  },
+];

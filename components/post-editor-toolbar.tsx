@@ -10,6 +10,7 @@ import {
   ItalicIcon,
   MinusIcon,
   PlusIcon,
+  SparklesIcon,
   Trash2Icon,
   TypeIcon,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { getFontCategories, getFontsByCategory, loadGoogleFont } from "@/lib/google-fonts";
+import { TEXT_STYLE_PRESETS } from "@/lib/text-style-presets";
 import type { ActiveTextProps, PostEditorHandle } from "./post-editor";
 
 interface PostEditorToolbarProps {
@@ -361,6 +363,53 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
               />
               <span className="text-xs w-8 text-right">{Math.round((activeTextProps?.opacity ?? 1) * 100)}%</span>
             </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <div className="mx-0.5 h-6 w-px bg-border" />
+
+      {/* Style Presets */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            disabled={!hasSelection}
+            className="flex h-8 items-center gap-1 rounded-md border border-transparent px-2 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
+            title="Estilos prontos"
+          >
+            <SparklesIcon className="size-3.5" />
+            Estilos
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2" align="start">
+          <p className="px-1 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Estilos prontos
+          </p>
+          <div className="space-y-1">
+            {TEXT_STYLE_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={async () => {
+                  if (preset.style.fontFamily) {
+                    await loadGoogleFont(preset.style.fontFamily);
+                  }
+                  update(preset.style);
+                }}
+                className="w-full rounded-lg border border-border px-3 py-2 text-left transition-colors hover:bg-secondary"
+              >
+                <span
+                  className="block text-sm leading-tight"
+                  style={{
+                    fontFamily: `"${preset.style.fontFamily}", sans-serif`,
+                    fontWeight: preset.style.fontWeight || "normal",
+                  }}
+                >
+                  {preset.name}
+                </span>
+              </button>
+            ))}
           </div>
         </PopoverContent>
       </Popover>
