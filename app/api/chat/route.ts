@@ -240,6 +240,28 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
       }
     }
 
+    // Buscar ultimos 3 estilos aprovados pelo usuario no editor
+    const { data: approvedStyles } = await db
+      .from("brand_memory")
+      .select("content")
+      .eq("agent_id", agentId)
+      .eq("type", "approved_style")
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    if (approvedStyles?.length) {
+      brandContext += `\n### Estilos Aprovados Recentemente\n`;
+      brandContext += `O usuário aprovou estes estilos nos últimos posts — priorize continuidade:\n`;
+      approvedStyles.forEach((m, i) => {
+        try {
+          const style = JSON.parse(typeof m.content === "string" ? m.content : JSON.stringify(m.content));
+          brandContext += `- Post ${i + 1}: ${JSON.stringify(style.textStyles)}\n`;
+        } catch {
+          // ignora entrada malformada
+        }
+      });
+    }
+
     // Fetch recent references for brand context
     const { data: refsData } = await db
       .from("brand_references")

@@ -1077,6 +1077,24 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               }
               return { ...prev, [msgId]: imgs };
             });
+
+            // Gravar estilo aprovado no brand_memory (fire-and-forget)
+            if (editorImage.textStyles && agentId) {
+              fetch("/api/brand-memory", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  agentId,
+                  type: "approved_style",
+                  content: JSON.stringify({
+                    textStyles: editorImage.textStyles,
+                    approvedAt: new Date().toISOString(),
+                  }),
+                }),
+              }).catch(() => {
+                // silencioso — nao bloquear o save por falha no memory
+              });
+            }
           }}
         />
       )}
