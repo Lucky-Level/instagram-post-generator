@@ -17,7 +17,6 @@ interface PostEditorModalProps {
 }
 
 export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta }: PostEditorModalProps) {
-  // headline, subtitle, cta serão passados ao PostEditor via initWithTextLayers (implementado na sequência)
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [displayWidth, setDisplayWidth] = useState(540);
@@ -44,6 +43,16 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Pre-populate canvas with text layers from generation
+  useEffect(() => {
+    if (!open) return;
+    // Aguarda o canvas inicializar (imageUrl carrega async)
+    const timer = setTimeout(() => {
+      editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [open, headline, subtitle, cta]);
 
   const handleSave = useCallback(() => {
     const dataUrl = editorRef.current?.exportImage();

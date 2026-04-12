@@ -24,6 +24,7 @@ export interface PostEditorHandle {
   updateActiveText: (props: Partial<ActiveTextProps>) => void;
   deleteSelected: () => void;
   exportImage: () => string | null;
+  initWithTextLayers: (layers: { headline?: string; subtitle?: string; cta?: string }) => void;
 }
 
 interface PostEditorProps {
@@ -212,6 +213,54 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             quality: 1,
             multiplier: 1,
           });
+        },
+
+        initWithTextLayers: async ({ headline, subtitle, cta }) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+
+          const fabric = await import("fabric");
+          await loadGoogleFont("Inter");
+
+          // Remove textboxes existentes para evitar duplicatas
+          const existingTexts = canvas.getObjects("textbox");
+          for (const obj of existingTexts) {
+            canvas.remove(obj);
+          }
+
+          const layers = [
+            { text: headline, y: 180, fontSize: 72, bold: true },
+            { text: subtitle, y: 680, fontSize: 42, bold: false },
+            { text: cta,      y: 880, fontSize: 32, bold: false },
+          ].filter((l): l is { text: string; y: number; fontSize: number; bold: boolean } =>
+            typeof l.text === "string" && l.text.trim().length > 0
+          );
+
+          for (const layer of layers) {
+            const textbox = new fabric.Textbox(layer.text, {
+              left: CANVAS_SIZE / 2,
+              top: layer.y,
+              originX: "center",
+              originY: "center",
+              width: 900,
+              fontSize: layer.fontSize,
+              fontFamily: "Inter",
+              fill: "#ffffff",
+              textAlign: "center",
+              fontWeight: layer.bold ? "bold" : "normal",
+              fontStyle: "normal",
+              editable: true,
+              shadow: new fabric.Shadow({
+                color: "rgba(0,0,0,0.7)",
+                blur: 10,
+                offsetX: 2,
+                offsetY: 2,
+              }),
+            });
+            canvas.add(textbox);
+          }
+
+          canvas.renderAll();
         },
       }),
       [getActiveTextProps, onSelectionChange],
