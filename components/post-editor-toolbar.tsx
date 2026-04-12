@@ -401,10 +401,10 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
               >
                 <span
                   className="block text-sm leading-tight"
-                  style={{
+                  style={fontsLoaded ? {
                     fontFamily: `"${preset.style.fontFamily}", sans-serif`,
                     fontWeight: preset.style.fontWeight || "normal",
-                  }}
+                  } : undefined}
                 >
                   {preset.name}
                 </span>
