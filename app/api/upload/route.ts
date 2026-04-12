@@ -1,7 +1,6 @@
-import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase";
 
 export const POST = async (request: Request) => {
   try {
@@ -15,21 +14,30 @@ export const POST = async (request: Request) => {
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = file.name.split(".").pop() || "bin";
     const filename = `${nanoid()}.${ext}`;
+    const path = `assets/${filename}`;
 
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
+    const db = createServerClient();
+    const { error } = await db.storage
+      .from("uploads")
+      .upload(path, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    const filePath = join(uploadDir, filename);
-    await writeFile(filePath, buffer);
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    const { data: urlData } = db.storage.from("uploads").getPublicUrl(path);
 
     return NextResponse.json({
-      url: `/uploads/${filename}`,
+      url: urlData.publicUrl,
       type: file.type,
     });
   } catch (error) {
     return NextResponse.json(
       { error: (error as Error).message },
-      { status: 400 }
+      { status: 400 },
     );
   }
 };
