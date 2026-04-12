@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getFontCategories, getFontsByCategory, loadGoogleFont } from "@/lib/google-fonts";
 import { TEXT_STYLE_PRESETS } from "@/lib/text-style-presets";
@@ -87,18 +88,23 @@ export function PostEditorToolbar({ editorRef, activeTextProps, agentId }: PostE
       formData.append("file", file);
       if (agentId) formData.append("agentId", agentId);
 
-      const res = await fetch("/api/upload-font", { method: "POST", body: formData });
-      if (!res.ok) return;
+      try {
+        const res = await fetch("/api/upload-font", { method: "POST", body: formData });
+        if (!res.ok) return;
 
-      const { url, fontFamily } = await res.json();
+        const { url, fontFamily } = await res.json();
 
-      // Register in browser via FontFace API
-      const font = new FontFace(fontFamily, `url(${url})`);
-      await font.load();
-      document.fonts.add(font);
+        // Register in browser via FontFace API
+        const font = new FontFace(fontFamily, `url(${url})`);
+        await font.load();
+        document.fonts.add(font);
 
-      setCustomFonts((prev) => [...prev, fontFamily]);
-      e.target.value = "";
+        setCustomFonts((prev) => [...prev, fontFamily]);
+      } catch {
+        toast.error("Erro ao carregar fonte");
+      } finally {
+        e.target.value = "";
+      }
     },
     [agentId],
   );

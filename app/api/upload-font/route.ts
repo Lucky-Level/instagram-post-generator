@@ -1,7 +1,16 @@
-import { createAdminClient } from "@/lib/supabase-server";
+import { createAdminClient, createServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
+  // Verify authenticated session
+  const userClient = await createServerClient();
+  const {
+    data: { user },
+  } = await userClient.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const agentId = formData.get("agentId") as string | null;
@@ -17,6 +26,43 @@ export async function POST(req: Request) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
   const admin = createAdminClient();
+
+  // Verify agentId ownership via workspace membership
+  if (agentId) {
+    const { data: agent } = await admin
+      .from("brand_agents")
+      .select("id, workspace_id")
+      .eq("id", agentId)
+      .single();
+
+    if (!agent) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (agent.workspace_id) {
+      // Check that the current user belongs to the agent's workspace
+      const { data: profile } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!profile) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const { data: membership } = await admin
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("workspace_id", agent.workspace_id)
+        .eq("user_id", profile.id)
+        .single();
+
+      if (!membership) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+  }
   const path = agentId
     ? `fonts/${agentId}/${file.name}`
     : `fonts/global/${file.name}`;
