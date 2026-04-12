@@ -12,6 +12,8 @@ import {
   Loader2Icon,
   PaperclipIcon,
   PencilIcon,
+  ThumbsUpIcon,
+  ThumbsDownIcon,
   XCircleIcon,
   XIcon,
 } from "lucide-react";
@@ -624,6 +626,23 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               `\n\n[ANÁLISE DA IMAGEM DE REFERÊNCIA ${uploadedImages.indexOf(img) + 1}]:\n${data.analysis}`,
             );
           }
+
+          // Deep reference analysis for brand learning
+          try {
+            const deepRes = await fetch("/api/analyze-reference", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageUrl: base64 }),
+            });
+            if (deepRes.ok) {
+              const deepData = await deepRes.json();
+              contextParts.push(
+                `\n\n[ANÁLISE PROFUNDA DE REFERÊNCIA ${uploadedImages.indexOf(img) + 1}]:\nCores: ${deepData.dominantColors?.join(", ")}\nEstilo: ${deepData.visualStyle}\nMood: ${deepData.mood}\nLayout: ${deepData.layoutStructure}\nPosição texto: ${deepData.textPlacement}`,
+              );
+            }
+          } catch {
+            // Deep analysis failed silently
+          }
         } catch {
           toast.error("Erro ao processar imagem");
         }
@@ -767,39 +786,75 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                   chatImages[msg.id].length === 1 ? "grid-cols-1" : "grid-cols-2"
                 )}>
                   {chatImages[msg.id].map((img, idx) => (
-                    <div key={idx} className="group relative rounded-xl overflow-hidden border border-border bg-secondary/30">
-                      {img.platform && (
-                        <div className="absolute top-2 left-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-                          {img.platform}
+                    <div key={idx} className="space-y-0">
+                      <div className="group relative rounded-xl overflow-hidden border border-border bg-secondary/30">
+                        {img.platform && (
+                          <div className="absolute top-2 left-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                            {img.platform}
+                          </div>
+                        )}
+                        <Image
+                          src={img.url}
+                          alt={img.description || `Imagem gerada ${idx + 1}`}
+                          width={1000}
+                          height={1000}
+                          className="w-full h-auto object-cover"
+                        />
+                        {/* Hover overlay with Edit + Download */}
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url })}
+                            className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                            title="Edit image"
+                          >
+                            <PencilIcon className="size-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              const link = document.createElement("a");
+                              link.download = `post-${idx + 1}.png`;
+                              link.href = img.url;
+                              link.click();
+                            }}
+                            className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                            title="Download image"
+                          >
+                            <DownloadIcon className="size-4" />
+                          </button>
                         </div>
-                      )}
-                      <Image
-                        src={img.url}
-                        alt={img.description || `Imagem gerada ${idx + 1}`}
-                        width={1000}
-                        height={1000}
-                        className="w-full h-auto object-cover"
-                      />
-                      {/* Hover overlay with Edit + Download */}
-                      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1">
                         <button
-                          onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url })}
-                          className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
-                          title="Edit image"
+                          onClick={async () => {
+                            try {
+                              await fetch("/api/feedback", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ imageUrl: img.url, sentiment: "positive", agentId }),
+                              });
+                              toast.success("Feedback salvo!");
+                            } catch { /* silent */ }
+                          }}
+                          className="p-1 rounded text-muted-foreground hover:text-green-500 transition-colors"
+                          title="Gostei"
                         >
-                          <PencilIcon className="size-4" />
+                          <ThumbsUpIcon className="size-3" />
                         </button>
                         <button
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.download = `post-${idx + 1}.png`;
-                            link.href = img.url;
-                            link.click();
+                          onClick={async () => {
+                            try {
+                              await fetch("/api/feedback", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ imageUrl: img.url, sentiment: "negative", agentId }),
+                              });
+                              toast.info("Feedback salvo. Diga o que nao gostou no chat.");
+                            } catch { /* silent */ }
                           }}
-                          className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
-                          title="Download image"
+                          className="p-1 rounded text-muted-foreground hover:text-red-500 transition-colors"
+                          title="Nao gostei"
                         >
-                          <DownloadIcon className="size-4" />
+                          <ThumbsDownIcon className="size-3" />
                         </button>
                       </div>
                     </div>
