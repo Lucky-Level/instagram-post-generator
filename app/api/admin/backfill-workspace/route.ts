@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 // POST /api/admin/backfill-workspace
@@ -40,7 +40,7 @@ export async function POST() {
   }
 
   // Use admin client to bypass RLS for the update
-  const { createAdminClient } = await import("@/lib/supabase");
+  const { createAdminClient } = await import("@/lib/supabase-server");
   const admin = createAdminClient();
 
   const { data, error } = await admin

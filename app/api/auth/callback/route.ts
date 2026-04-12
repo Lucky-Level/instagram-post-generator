@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 // GET /api/auth/callback — Supabase OAuth + magic link exchange

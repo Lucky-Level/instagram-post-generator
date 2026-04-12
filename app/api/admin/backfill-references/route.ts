@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 60;

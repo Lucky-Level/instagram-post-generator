@@ -1,7 +1,7 @@
 import { google } from "@ai-sdk/google";
 import { groq } from "@ai-sdk/groq";
 import { convertToModelMessages, streamText } from "ai";
-import { createServerClient } from "@/lib/supabase";
+import { createServerClient } from "@/lib/supabase-server";
 
 export const maxDuration = 60;
 
