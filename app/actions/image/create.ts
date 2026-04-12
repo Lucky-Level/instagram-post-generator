@@ -131,6 +131,8 @@ async function tryCloudflare(prompt: string): Promise<string> {
 
 // Provider 3: Pollinations (free, no key, rate limited)
 async function tryPollinations(prompt: string): Promise<string> {
+  // Pollinations strips non-word chars (colons, uppercase) via regex below;
+  // use plain-English variant instead of NO_TEXT_SUFFIX to survive sanitization.
   const promptWithSuffix = prompt + " no text no typography no letters no words clean background only";
   const clean = promptWithSuffix
     .replace(/[^\w\s,.\-:;!?()]/g, " ")
