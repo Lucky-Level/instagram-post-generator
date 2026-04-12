@@ -73,6 +73,11 @@ function isConfirmationMessage(text: string): boolean {
   );
 }
 
+interface GeneratedImage {
+  url: string;
+  description?: string;
+}
+
 interface ChatPanelProps {
   fullscreen?: boolean;
 }
@@ -80,11 +85,10 @@ interface ChatPanelProps {
 export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
   const [input, setInput] = useState("");
   const [generating, setGenerating] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<{
+  const [uploadedImages, setUploadedImages] = useState<{
     url: string;
     file: File;
-    base64?: string;
-  } | null>(null);
+  }[]>([]);
   const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const referenceImagesRef = useRef<string[]>([]);
   const [showTemplates, setShowTemplates] = useState(true);
@@ -94,6 +98,9 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
   const { setNodes, setEdges, fitView, setCenter } = useReactFlow();
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([]);
   const [stepsCollapsed, setStepsCollapsed] = useState(false);
+  // Track generated images per assistant message so they render inline in chat
+  const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
+  const activeMsgIdRef = useRef<string | null>(null);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -120,6 +127,15 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
   useEffect(() => {
     referenceImagesRef.current = referenceImages;
   }, [referenceImages]);
+
+  const addChatImage = useCallback((img: GeneratedImage) => {
+    const msgId = activeMsgIdRef.current;
+    if (!msgId) return;
+    setChatImages((prev) => ({
+      ...prev,
+      [msgId]: [...(prev[msgId] ?? []), img],
+    }));
+  }, []);
 
   const createPipeline = useCallback(
     async (data: PostData) => {
@@ -268,6 +284,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
                       : n,
                   ),
                 );
+                addChatImage({ url: result.url, description: result.description });
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -410,8 +427,9 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
                     : n,
                 ),
               );
+              addChatImage({ url: imageResult.url, description: imageResult.description });
               updateStep("media-node", "done");
-              toast.success("Post criado no canvas!");
+              toast.success("Post criado!");
             }
           } else {
             toast.success("Workflow criado! Clique Run no node para gerar.");
@@ -428,7 +446,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
         setGenerating(false);
       }
     },
-    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition],
+    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage],
   );
 
   const { messages, sendMessage, status } = useChat({
@@ -445,7 +463,9 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
 
       const postData = parsePostData(fullText);
       if (postData) {
+        activeMsgIdRef.current = message.id;
         await createPipeline(postData);
+        activeMsgIdRef.current = null;
       }
     },
   });
@@ -463,10 +483,15 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
   }, [messages.length]);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setUploadedImage({ url, file });
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newImages = Array.from(files).map((file) => ({
+      url: URL.createObjectURL(file),
+      file,
+    }));
+    setUploadedImages((prev) => [...prev, ...newImages]);
+    // Reset input so the same file can be selected again
+    e.target.value = "";
   };
 
   const handleQuickReply = (text: string) => {
@@ -475,7 +500,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if ((!input.trim() && !uploadedImage) || isStreaming) return;
+    if ((!input.trim() && uploadedImages.length === 0) || isStreaming) return;
 
     setShowTemplates(false);
 
@@ -525,41 +550,42 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
       }
     }
 
-    // 2. Handle uploaded image
-    if (uploadedImage) {
-      try {
-        toast.info("Analisando imagem de referência...");
+    // 2. Handle uploaded images (supports multiple)
+    if (uploadedImages.length > 0) {
+      toast.info(`Analisando ${uploadedImages.length} imagem(ns) de referencia...`);
+      for (const img of uploadedImages) {
+        try {
+          const reader = new FileReader();
+          const base64 = await new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(img.file);
+          });
 
-        const reader = new FileReader();
-        const base64 = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(uploadedImage.file);
-        });
+          referenceImagesRef.current = [...referenceImagesRef.current, base64];
+          setReferenceImages([...referenceImagesRef.current]);
 
-        referenceImagesRef.current = [...referenceImagesRef.current, base64];
-        setReferenceImages(referenceImagesRef.current);
+          const res = await fetch("/api/analyze-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageUrl: base64 }),
+          });
 
-        const res = await fetch("/api/analyze-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl: base64 }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          contextParts.push(
-            `\n\n[ANÁLISE DA IMAGEM DE REFERÊNCIA]:\n${data.analysis}`,
-          );
-          toast.success("Imagem de referência salva!");
+          if (res.ok) {
+            const data = await res.json();
+            contextParts.push(
+              `\n\n[ANÁLISE DA IMAGEM DE REFERÊNCIA ${uploadedImages.indexOf(img) + 1}]:\n${data.analysis}`,
+            );
+          }
+        } catch {
+          toast.error("Erro ao processar imagem");
         }
-      } catch {
-        toast.error("Erro ao processar imagem");
       }
+      toast.success(`${uploadedImages.length} imagem(ns) de referencia salvas!`);
     }
 
     sendMessage({ text: contextParts.join("") });
     setInput("");
-    setUploadedImage(null);
+    setUploadedImages([]);
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -682,7 +708,27 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
               {hasPostData && msg.role === "assistant" && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                   <div className="size-1.5 rounded-full bg-primary" />
-                  <span>Workflow criado no canvas</span>
+                  <span>Workflow criado{!fullscreen ? " no canvas" : ""}</span>
+                </div>
+              )}
+
+              {/* Generated images inline (especially useful in APP/fullscreen mode) */}
+              {chatImages[msg.id] && chatImages[msg.id].length > 0 && (
+                <div className={cn(
+                  "grid gap-2 mt-2",
+                  chatImages[msg.id].length === 1 ? "grid-cols-1" : "grid-cols-2"
+                )}>
+                  {chatImages[msg.id].map((img, idx) => (
+                    <div key={idx} className="relative rounded-xl overflow-hidden border border-border bg-secondary/30">
+                      <Image
+                        src={img.url}
+                        alt={img.description || `Imagem gerada ${idx + 1}`}
+                        width={1000}
+                        height={1000}
+                        className="w-full h-auto object-cover"
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -778,24 +824,26 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
         )}
       </div>
 
-      {/* Uploaded image preview */}
-      {uploadedImage && (
-        <div className="px-4 pb-2">
-          <div className="relative inline-block">
-            <Image
-              src={uploadedImage.url}
-              alt="Referência"
-              width={64}
-              height={64}
-              className="rounded-lg object-cover border border-border"
-            />
-            <button
-              onClick={() => setUploadedImage(null)}
-              className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive text-white flex items-center justify-center"
-            >
-              <XIcon className="size-3" />
-            </button>
-          </div>
+      {/* Uploaded images preview */}
+      {uploadedImages.length > 0 && (
+        <div className="px-4 pb-2 flex gap-2 flex-wrap">
+          {uploadedImages.map((img, idx) => (
+            <div key={idx} className="relative inline-block">
+              <Image
+                src={img.url}
+                alt={`Referencia ${idx + 1}`}
+                width={64}
+                height={64}
+                className="rounded-lg object-cover border border-border size-16"
+              />
+              <button
+                onClick={() => setUploadedImages((prev) => prev.filter((_, i) => i !== idx))}
+                className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive text-white flex items-center justify-center"
+              >
+                <XIcon className="size-3" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
@@ -809,6 +857,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={handleImageUpload}
           />
@@ -826,7 +875,7 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
           />
           <button
             type="submit"
-            disabled={(!input.trim() && !uploadedImage) || isStreaming || generating}
+            disabled={(!input.trim() && uploadedImages.length === 0) || isStreaming || generating}
             className={cn(
               "absolute right-2 rounded-lg bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-30 hover:bg-primary/90 transition-colors",
               fullscreen ? "bottom-2.5 size-9" : "bottom-2 size-8"
