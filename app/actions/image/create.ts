@@ -3,6 +3,11 @@
 import { parseError } from "@/lib/error/parse";
 import { generateWithFacePreservation } from "./flux-kontext";
 
+const NO_TEXT_SUFFIX =
+  " CRITICAL: Do NOT include any text, titles, subtitles, logos, watermarks, " +
+  "typography, captions, labels, or UI overlays of any kind in the image. " +
+  "Clean visual background only. No words, no letters.";
+
 interface GenerateImageActionProps {
   prompt: string;
   modelId: string;
@@ -62,7 +67,7 @@ async function tryGemini(
       ].join("\n"),
     });
   } else {
-    parts.push({ text: `Generate an image: ${prompt}` });
+    parts.push({ text: `Generate an image: ${prompt}${NO_TEXT_SUFFIX}` });
   }
 
   const response = await fetch(
@@ -109,7 +114,7 @@ async function tryCloudflare(prompt: string): Promise<string> {
     {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt: prompt + NO_TEXT_SUFFIX }),
     },
   );
 
@@ -126,7 +131,8 @@ async function tryCloudflare(prompt: string): Promise<string> {
 
 // Provider 3: Pollinations (free, no key, rate limited)
 async function tryPollinations(prompt: string): Promise<string> {
-  const clean = prompt
+  const promptWithSuffix = prompt + " no text no typography no letters no words clean background only";
+  const clean = promptWithSuffix
     .replace(/[^\w\s,.\-:;!?()]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
