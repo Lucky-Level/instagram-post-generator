@@ -20,28 +20,30 @@ export async function POST(request: Request) {
           content: [
             {
               type: "text",
-              text: `You are an expert visual analyst for brand identity systems. Analyze this reference image and return a structured JSON object with EXACTLY these fields:
+              text: `You are an expert visual analyst for brand identity systems. Analyze this brand reference image and return a JSON object with EXACTLY these fields:
 
 {
+  "overallAnalysis": "2-3 sentences describing the visual style and mood",
   "dominantColors": ["#hex1", "#hex2", "#hex3", "#hex4", "#hex5"],
-  "fontStyles": ["category1", "category2"],
   "layoutStructure": "description of where text and subject are positioned",
-  "visualStyle": "one word or short phrase",
-  "mood": "one word or short phrase",
-  "subjectPosition": "position description",
-  "textPlacement": "where text appears in the image",
-  "overallAnalysis": "2-3 sentence summary of the visual identity"
+  "typographyStyle": "one of: sans-display-heavy | sans-minimal | serif-elegant | script-fluid | mixed-hierarchy | no-text",
+  "textEffects": ["outline", "hard-shadow", "soft-shadow", "gradient", "none"],
+  "fontWeight": "one of: ultralight | light | regular | bold | extrabold | black",
+  "charSpacingFeel": "one of: very-tight | tight | normal | wide | very-wide",
+  "compositionType": "one of: text-dominant | image-dominant | balanced | text-overlay | text-integrated",
+  "commercialStyle": "one of: luxury | lifestyle | bold-street | minimal-tech | playful | traditional"
 }
 
 Rules:
-- dominantColors: top 5 hex color strings from the image (e.g. "#FF5733")
-- fontStyles: detected font style categories, pick from: "serif", "sans-serif", "display", "handwritten", "monospace". If no text is visible, return an empty array.
-- layoutStructure: describe the spatial arrangement (e.g. "Text centered top third, product image fills bottom two-thirds with blurred background")
-- visualStyle: one of: "minimalist", "bold", "vintage", "modern", "corporate", "playful", "elegant", "grunge", "editorial", "organic" (or combine if needed)
-- mood: one of: "professional", "energetic", "calm", "luxury", "casual", "playful", "dramatic", "warm", "cool", "sophisticated"
-- subjectPosition: e.g. "center", "rule-of-thirds-left", "rule-of-thirds-right", "top-third", "bottom-third", "full-bleed", "off-center-left"
-- textPlacement: describe where text appears (e.g. "Bold headline top-center, subtext bottom-left") or "no text visible"
 - overallAnalysis: 2-3 sentences summarizing the visual identity, style choices, and what makes this design effective
+- dominantColors: top 5 hex color strings from the image (e.g. "#FF5733")
+- layoutStructure: describe the spatial arrangement (e.g. "Text centered top third, product image fills bottom two-thirds with blurred background")
+- typographyStyle: pick exactly one value from the allowed list. Use "no-text" if no text is visible.
+- textEffects: array of detected effects. Pick from: "outline", "hard-shadow", "soft-shadow", "gradient", "none". Can have multiple.
+- fontWeight: pick exactly one value from the allowed list based on the perceived weight of text in the image. Use "regular" if no text.
+- charSpacingFeel: pick exactly one value from the allowed list based on perceived letter-spacing. Use "normal" if no text.
+- compositionType: pick exactly one value from the allowed list.
+- commercialStyle: pick exactly one value from the allowed list.
 
 Return ONLY the JSON object, no markdown fences, no extra text.`,
             },
@@ -64,19 +66,30 @@ Return ONLY the JSON object, no markdown fences, no extra text.`,
     // Parse the JSON from the response (strip markdown fences if present)
     const jsonStr = raw.replace(/```json?\s*/g, "").replace(/```\s*/g, "").trim();
     try {
-      const analysis = JSON.parse(jsonStr);
-      return Response.json(analysis);
+      const parsed = JSON.parse(jsonStr);
+
+      const typographyDna = {
+        style: parsed.typographyStyle ?? null,
+        effects: parsed.textEffects ?? [],
+        weight: parsed.fontWeight ?? null,
+        charSpacing: parsed.charSpacingFeel ?? null,
+        composition: parsed.compositionType ?? null,
+        commercial: parsed.commercialStyle ?? null,
+      };
+
+      return Response.json({
+        overallAnalysis: parsed.overallAnalysis,
+        dominantColors: parsed.dominantColors,
+        layoutStructure: parsed.layoutStructure,
+        typographyDna,
+      });
     } catch {
       // If JSON parsing fails, return structured fallback with the raw text
       return Response.json({
-        dominantColors: [],
-        fontStyles: [],
-        layoutStructure: "",
-        visualStyle: "",
-        mood: "",
-        subjectPosition: "",
-        textPlacement: "",
         overallAnalysis: raw,
+        dominantColors: [],
+        layoutStructure: "",
+        typographyDna: null,
       });
     }
   } catch (err) {

@@ -176,6 +176,7 @@ export default function OnboardingPage() {
         layoutStructure?: string;
         visualStyle?: string;
         mood?: string;
+        typographyDna?: Record<string, unknown>;
       }[] = [];
 
       for (const ref of references) {
@@ -194,6 +195,7 @@ export default function OnboardingPage() {
             layoutStructure?: string;
             visualStyle?: string;
             mood?: string;
+            typographyDna?: Record<string, unknown>;
           } = {};
           try {
             const analyzeRes = await fetch("/api/analyze-reference", {
@@ -216,6 +218,7 @@ export default function OnboardingPage() {
             layoutStructure: analysisData.layoutStructure,
             visualStyle: analysisData.visualStyle,
             mood: analysisData.mood,
+            typographyDna: analysisData.typographyDna,
           });
         }
       }

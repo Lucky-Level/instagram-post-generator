@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       layoutStructure?: string;
       visualStyle?: string;
       mood?: string;
+      typographyDna?: Record<string, unknown>;
     }) => ({
       agent_id: data.id,
       image_url: ref.url,
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
       analysis: ref.analysis || null,
       extracted_colors: ref.dominantColors || null,
       extracted_layout: ref.layoutStructure || null,
+      typography_dna: ref.typographyDna || null,
       tags: ref.is_anti ? ["anti-referencia"] : ["moodboard", "aprovado"],
       source: "upload",
     }));

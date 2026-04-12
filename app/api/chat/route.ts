@@ -241,18 +241,18 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
     }
 
     // Fetch recent references for brand context
-    const { data: refs } = await db
+    const { data: refsData } = await db
       .from("brand_references")
-      .select("image_url, analysis, extracted_colors, extracted_layout")
+      .select("image_url, analysis, extracted_colors, extracted_layout, typography_dna, is_anti_reference")
       .eq("agent_id", agentId)
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (refs?.length) {
+    if (refsData?.length) {
       // Add reference context to the brand DNA section
       brandContext += `\n\n## VISUAL REFERENCES\n`;
-      brandContext += `The user has uploaded ${refs.length} visual reference image(s) that define this brand's aesthetic.\n`;
-      for (const ref of refs) {
+      brandContext += `The user has uploaded ${refsData.length} visual reference image(s) that define this brand's aesthetic.\n`;
+      for (const ref of refsData) {
         if (ref.analysis) {
           brandContext += `- Analysis: ${ref.analysis}\n`;
         }
@@ -264,6 +264,21 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
         }
       }
       brandContext += `Always align your visual suggestions with this aesthetic reference.\n`;
+
+      // Typography DNA from positive references
+      const positiveRefs = refsData.filter((r: any) => !r.is_anti_reference);
+      const typoDna = positiveRefs
+        .filter((r: any) => r.typography_dna)
+        .map((r: any) => r.typography_dna)
+        .slice(0, 3);
+
+      if (typoDna.length > 0) {
+        brandContext += `\n### DNA Tipográfico (extraído das referências)\n`;
+        typoDna.forEach((dna: any, i: number) => {
+          brandContext += `- Referência ${i + 1}: estilo=${dna.style}, efeitos=${(dna.effects || []).join(",")}, peso=${dna.weight}, charSpacing=${dna.charSpacing}, estilo-comercial=${dna.commercial}\n`;
+        });
+        brandContext += `\nUse este DNA para escolher fontFamily e textStyles condizentes com a identidade visual real da marca.\n`;
+      }
     }
 
     return BASE_SYSTEM_PROMPT + brandContext;
