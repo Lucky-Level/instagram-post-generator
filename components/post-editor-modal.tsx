@@ -44,16 +44,6 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  // Pre-populate canvas with text layers from generation
-  useEffect(() => {
-    if (!open) return;
-    // Aguarda o canvas inicializar (imageUrl carrega async)
-    const timer = setTimeout(() => {
-      editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [open, headline, subtitle, cta]);
-
   const handleSave = useCallback(() => {
     const dataUrl = editorRef.current?.exportImage();
     if (dataUrl) {
@@ -103,6 +93,9 @@ export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, sub
           imageUrl={imageUrl}
           displayWidth={displayWidth}
           onSelectionChange={setActiveTextProps}
+          onReady={() => {
+            editorRef.current?.initWithTextLayers({ headline, subtitle, cta });
+          }}
         />
 
         {/* Toolbar */}

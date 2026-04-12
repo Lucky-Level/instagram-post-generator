@@ -31,6 +31,7 @@ interface PostEditorProps {
   imageUrl: string;
   displayWidth?: number;
   onSelectionChange?: (props: ActiveTextProps | null) => void;
+  onReady?: () => void;
 }
 
 const CANVAS_SIZE = 1080;
@@ -45,7 +46,7 @@ const DEFAULT_TEXT_PROPS: ActiveTextProps = {
 };
 
 export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
-  ({ imageUrl, displayWidth = 540, onSelectionChange }, ref) => {
+  ({ imageUrl, displayWidth = 540, onSelectionChange, onReady }, ref) => {
     const canvasElRef = useRef<HTMLCanvasElement>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const fabricCanvasRef = useRef<any>(null);
@@ -128,6 +129,7 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
         });
 
         setReady(true);
+        onReady?.();
       }
 
       init();
