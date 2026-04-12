@@ -480,6 +480,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         url: composed.url,
                         description: `${fmt.platform} - ${fmt.format_name} (${fmt.width}x${fmt.height})`,
                         platform: `${fmt.platform} ${fmt.format_name}`,
+                        headline: data.headline,
+                        subtitle: data.subtitle,
+                        cta: data.cta,
                       });
                     }
                   } catch {

@@ -17,6 +17,7 @@ interface PostEditorModalProps {
 }
 
 export function PostEditorModal({ imageUrl, open, onClose, onSave, headline, subtitle, cta }: PostEditorModalProps) {
+  // headline, subtitle, cta serão passados ao PostEditor via initWithTextLayers (implementado na sequência)
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [displayWidth, setDisplayWidth] = useState(540);
