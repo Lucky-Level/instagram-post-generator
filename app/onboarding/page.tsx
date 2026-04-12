@@ -168,16 +168,55 @@ export default function OnboardingPage() {
       }
 
       // Upload reference images
-      const uploadedRefs: { url: string; is_anti: boolean }[] = [];
+      const uploadedRefs: {
+        url: string;
+        is_anti: boolean;
+        analysis?: string;
+        dominantColors?: string[];
+        layoutStructure?: string;
+        visualStyle?: string;
+        mood?: string;
+      }[] = [];
+
       for (const ref of references) {
         if (ref.file) {
           const formData = new FormData();
           formData.append("file", ref.file);
           const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            uploadedRefs.push({ url: uploadData.url, is_anti: ref.isAnti });
+          if (!uploadRes.ok) continue;
+          const uploadData = await uploadRes.json();
+          const imageUrl = uploadData.url;
+
+          // Analyze the reference image (best-effort, don't fail if analysis errors)
+          let analysisData: {
+            overallAnalysis?: string;
+            dominantColors?: string[];
+            layoutStructure?: string;
+            visualStyle?: string;
+            mood?: string;
+          } = {};
+          try {
+            const analyzeRes = await fetch("/api/analyze-reference", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ imageUrl }),
+            });
+            if (analyzeRes.ok) {
+              analysisData = await analyzeRes.json();
+            }
+          } catch {
+            // silent — analysis failure should not block agent creation
           }
+
+          uploadedRefs.push({
+            url: imageUrl,
+            is_anti: ref.isAnti,
+            analysis: analysisData.overallAnalysis,
+            dominantColors: analysisData.dominantColors,
+            layoutStructure: analysisData.layoutStructure,
+            visualStyle: analysisData.visualStyle,
+            mood: analysisData.mood,
+          });
         }
       }
 
