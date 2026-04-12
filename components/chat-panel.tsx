@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { generateImageAction } from "@/app/actions/image/create";
 import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
+import { type PlatformFormat, getPlatformFormats, groupByPlatform } from "@/lib/platform-formats";
 import { PostEditorModal } from "./post-editor-modal";
 
 interface PipelineStep {
@@ -79,6 +80,7 @@ function isConfirmationMessage(text: string): boolean {
 interface GeneratedImage {
   url: string;
   description?: string;
+  platform?: string;
 }
 
 interface ChatPanelProps {
@@ -106,6 +108,8 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
   const [editorImage, setEditorImage] = useState<{ msgId: string; idx: number; url: string } | null>(null);
+  const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
+  const [showPlatforms, setShowPlatforms] = useState(false);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -432,8 +436,44 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     : n,
                 ),
               );
-              addChatImage({ url: imageResult.url, description: imageResult.description });
+              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square" });
               updateStep("media-node", "done");
+
+              // Generate variants for other selected platform formats
+              const allFormats = getPlatformFormats();
+              const extraFormats = selectedFormats
+                .filter((fid) => fid !== "ig-feed-sq")
+                .map((fid) => allFormats.find((f) => f.id === fid))
+                .filter(Boolean) as PlatformFormat[];
+
+              if (extraFormats.length > 0) {
+                toast.info(`Gerando ${extraFormats.length} variante(s) de plataforma...`);
+                for (const fmt of extraFormats) {
+                  try {
+                    const composeRes = await fetch("/api/compose", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        imageUrl: imageResult.url,
+                        width: fmt.width,
+                        height: fmt.height,
+                        fit: "cover",
+                      }),
+                    });
+                    if (composeRes.ok) {
+                      const composed = await composeRes.json();
+                      addChatImage({
+                        url: composed.url,
+                        description: `${fmt.platform} - ${fmt.format_name} (${fmt.width}x${fmt.height})`,
+                        platform: `${fmt.platform} ${fmt.format_name}`,
+                      });
+                    }
+                  } catch {
+                    // Variant generation failed silently
+                  }
+                }
+              }
+
               toast.success("Post criado!");
             }
           } else {
@@ -728,6 +768,11 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 )}>
                   {chatImages[msg.id].map((img, idx) => (
                     <div key={idx} className="group relative rounded-xl overflow-hidden border border-border bg-secondary/30">
+                      {img.platform && (
+                        <div className="absolute top-2 left-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                          {img.platform}
+                        </div>
+                      )}
                       <Image
                         src={img.url}
                         alt={img.description || `Imagem gerada ${idx + 1}`}
@@ -767,19 +812,66 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
         {/* Quick reply buttons when agent asks for confirmation */}
         {showQuickReplies && (
-          <div className="flex gap-2 pt-1">
-            <button
-              onClick={() => handleQuickReply("Sim, cria!")}
-              className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-            >
-              Let&apos;s go!
-            </button>
-            <button
-              onClick={() => handleQuickReply("Quero ajustar algumas coisas")}
-              className="px-4 py-2 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
-            >
-              Ajustar
-            </button>
+          <div className="space-y-2 pt-1">
+            {/* Platform format picker */}
+            <div className="space-y-1.5">
+              <button
+                onClick={() => setShowPlatforms(!showPlatforms)}
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronDownIcon className={cn("size-3 transition-transform", !showPlatforms && "-rotate-90")} />
+                <span>Plataformas ({selectedFormats.length})</span>
+              </button>
+              {showPlatforms && (
+                <div className="rounded-lg border border-border bg-card p-2 space-y-2 max-h-48 overflow-y-auto">
+                  {Object.entries(groupByPlatform(getPlatformFormats())).map(([platform, formats]) => (
+                    <div key={platform}>
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                        {platform}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {formats.map((fmt) => {
+                          const selected = selectedFormats.includes(fmt.id);
+                          return (
+                            <button
+                              key={fmt.id}
+                              onClick={() => {
+                                setSelectedFormats((prev) =>
+                                  selected ? prev.filter((id) => id !== fmt.id) : [...prev, fmt.id]
+                                );
+                              }}
+                              className={cn(
+                                "rounded-md px-2 py-0.5 text-[10px] border transition-colors",
+                                selected
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border text-muted-foreground hover:border-foreground/20"
+                              )}
+                            >
+                              {fmt.format_name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleQuickReply("Sim, cria!")}
+                className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                Let&apos;s go!
+              </button>
+              <button
+                onClick={() => handleQuickReply("Quero ajustar algumas coisas")}
+                className="px-4 py-2 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+              >
+                Ajustar
+              </button>
+            </div>
           </div>
         )}
 
