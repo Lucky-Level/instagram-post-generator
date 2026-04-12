@@ -86,7 +86,7 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
           fontStyle: obj.fontStyle || "normal",
           textAlign: obj.textAlign || "center",
           strokeWidth: obj.strokeWidth ?? 0,
-          stroke: (obj.stroke as string) || "#000000",
+          stroke: typeof obj.stroke === "string" ? obj.stroke : "#000000",
           shadowColor: shadow?.color || "rgba(0,0,0,0)",
           shadowBlur: shadow?.blur ?? 0,
           shadowOffsetX: shadow?.offsetX ?? 0,
@@ -198,12 +198,17 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             textAlign: DEFAULT_TEXT_PROPS.textAlign as "center" | "left" | "right",
             fontWeight: DEFAULT_TEXT_PROPS.fontWeight,
             fontStyle: DEFAULT_TEXT_PROPS.fontStyle as "normal" | "italic",
+            strokeWidth: DEFAULT_TEXT_PROPS.strokeWidth,
+            stroke: DEFAULT_TEXT_PROPS.stroke,
+            charSpacing: DEFAULT_TEXT_PROPS.charSpacing,
+            lineHeight: DEFAULT_TEXT_PROPS.lineHeight,
+            opacity: DEFAULT_TEXT_PROPS.opacity,
             editable: true,
             shadow: new fabric.Shadow({
-              color: "rgba(0,0,0,0.6)",
-              blur: 8,
-              offsetX: 2,
-              offsetY: 2,
+              color: DEFAULT_TEXT_PROPS.shadowColor,
+              blur: DEFAULT_TEXT_PROPS.shadowBlur,
+              offsetX: DEFAULT_TEXT_PROPS.shadowOffsetX,
+              offsetY: DEFAULT_TEXT_PROPS.shadowOffsetY,
             }),
           });
           canvas.add(text);
@@ -217,6 +222,9 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
           if (!canvas) return;
           const active = canvas.getActiveObject();
           if (!active || active.type !== "textbox") return;
+
+          // Import fabric once at the top — needed for Shadow and font loading
+          const fabric = await import("fabric");
 
           if (props.fontFamily) {
             await loadGoogleFont(props.fontFamily);
@@ -240,7 +248,6 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             props.shadowOffsetX !== undefined ||
             props.shadowOffsetY !== undefined
           ) {
-            const fabric = await import("fabric");
             const current = active.shadow as any;
             active.set(
               "shadow",
