@@ -16,7 +16,7 @@ import {
 import { HexColorPicker } from "react-colorful";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { getPopularFonts, loadGoogleFont } from "@/lib/google-fonts";
+import { getFontCategories, getFontsByCategory, loadGoogleFont } from "@/lib/google-fonts";
 import type { ActiveTextProps, PostEditorHandle } from "./post-editor";
 
 interface PostEditorToolbarProps {
@@ -27,16 +27,16 @@ interface PostEditorToolbarProps {
 export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorToolbarProps) {
   const hasSelection = activeTextProps !== null;
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  const fonts = getPopularFonts();
 
   // Preload all fonts for the dropdown preview
   useEffect(() => {
     async function preload() {
-      await Promise.all(fonts.map((f) => loadGoogleFont(f)));
+      const allFonts = getFontCategories().flatMap((cat) => getFontsByCategory(cat));
+      await Promise.all(allFonts.map((f) => loadGoogleFont(f)));
       setFontsLoaded(true);
     }
     preload();
-  }, [fonts]);
+  }, []);
 
   const handleAddText = useCallback(() => {
     editorRef.current?.addText();
@@ -86,19 +86,26 @@ export function PostEditorToolbar({ editorRef, activeTextProps }: PostEditorTool
             {activeTextProps?.fontFamily ?? "Font"}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-52 max-h-64 overflow-y-auto p-1" align="start">
-          {fonts.map((font) => (
-            <button
-              key={font}
-              onClick={() => update({ fontFamily: font })}
-              className={cn(
-                "w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-secondary transition-colors",
-                activeTextProps?.fontFamily === font && "bg-secondary font-semibold",
-              )}
-              style={fontsLoaded ? { fontFamily: `"${font}", sans-serif` } : undefined}
-            >
-              {font}
-            </button>
+        <PopoverContent className="w-56 max-h-72 overflow-y-auto p-1" align="start">
+          {getFontCategories().map((cat) => (
+            <div key={cat}>
+              <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {cat}
+              </p>
+              {getFontsByCategory(cat).map((font) => (
+                <button
+                  key={font}
+                  onClick={() => update({ fontFamily: font })}
+                  className={cn(
+                    "w-full rounded-md px-3 py-1.5 text-left text-sm hover:bg-secondary transition-colors",
+                    activeTextProps?.fontFamily === font && "bg-secondary font-semibold",
+                  )}
+                  style={fontsLoaded ? { fontFamily: `"${font}", sans-serif` } : undefined}
+                >
+                  {font}
+                </button>
+              ))}
+            </div>
           ))}
         </PopoverContent>
       </Popover>
