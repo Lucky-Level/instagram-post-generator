@@ -1,10 +1,11 @@
 import { google } from "@ai-sdk/google";
 import { groq } from "@ai-sdk/groq";
 import { convertToModelMessages, streamText } from "ai";
+import { createServerClient } from "@/lib/supabase";
 
 export const maxDuration = 60;
 
-const SYSTEM_PROMPT = `Você é o Post Agent — um diretor criativo de agência premium.
+const BASE_SYSTEM_PROMPT = `Você é o Post Agent — um diretor criativo de agência premium.
 
 ## COMO INTERAGIR
 
@@ -93,8 +94,62 @@ Agente: "Entendi! Vou criar um post para a promoção de terça da Pizzaria Bell
 Usuário: "sim"
 Agente: [gera o <post-data>]`;
 
+async function buildSystemPrompt(agentId?: string): Promise<string> {
+  if (!agentId) return BASE_SYSTEM_PROMPT;
+
+  try {
+    const db = createServerClient();
+    const { data: agent } = await db
+      .from("brand_agents")
+      .select("name, personality, brand_kit, platform_rules")
+      .eq("id", agentId)
+      .single();
+
+    if (!agent) return BASE_SYSTEM_PROMPT;
+
+    const p = agent.personality || {};
+    const bk = agent.brand_kit || {};
+    const colors = bk.colors || {};
+    const fonts = bk.fonts || {};
+
+    const brandContext = `
+
+## BRAND DNA — ${agent.name}
+
+Você é o Creative Director da marca "${agent.name}". TODA criação deve seguir esta identidade:
+
+### Personalidade
+- Tom: ${p.tone || "profissional"}
+- Energia: ${p.energy || "equilibrada"}
+- Público-alvo: ${p.audience || "geral"}
+- Linguagem visual: ${p.visual_language || "moderna e limpa"}
+
+### Identidade Visual
+- Cor primária: ${colors.primary || "#000000"}
+- Cor secundária: ${colors.secondary || "#FFFFFF"}
+- Cor de destaque: ${colors.accent || "#3B82F6"}
+- Fonte de título: ${fonts.heading || "Inter"}
+- Fonte de corpo: ${fonts.body || "Inter"}
+
+### Regras
+${p.do_this?.length ? `- SEMPRE: ${p.do_this.join(", ")}` : ""}
+${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
+
+### Instrução
+- Use as cores da marca nos imagePrompts (inclua os hex codes)
+- Mantenha o tom "${p.tone || "profissional"}" em todas as legendas
+- Adapte a linguagem visual ao público: ${p.audience || "geral"}
+`;
+
+    return BASE_SYSTEM_PROMPT + brandContext;
+  } catch {
+    return BASE_SYSTEM_PROMPT;
+  }
+}
+
 export const POST = async (req: Request) => {
   const { messages } = await req.json();
+  const agentId = req.headers.get("x-agent-id") || undefined;
 
   const modelMessages = await convertToModelMessages(messages);
 
@@ -117,9 +172,11 @@ export const POST = async (req: Request) => {
     ? google("gemini-2.5-flash")
     : groq("llama-3.3-70b-versatile");
 
+  const systemPrompt = await buildSystemPrompt(agentId);
+
   const result = streamText({
     model,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: textOnlyMessages,
   });
 

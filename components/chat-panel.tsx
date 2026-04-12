@@ -80,9 +80,10 @@ interface GeneratedImage {
 
 interface ChatPanelProps {
   fullscreen?: boolean;
+  agentId?: string;
 }
 
-export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
+export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const [input, setInput] = useState("");
   const [generating, setGenerating] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<{
@@ -450,7 +451,10 @@ export const ChatPanel = ({ fullscreen }: ChatPanelProps) => {
   );
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      headers: agentId ? { "x-agent-id": agentId } : undefined,
+    }),
     onError: (error) => {
       toast.error(error.message || "Erro ao gerar resposta");
     },

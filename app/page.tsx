@@ -3,11 +3,13 @@
 import {
   MenuIcon,
   PanelLeftCloseIcon,
+  PlusIcon,
   SaveIcon,
   Settings2Icon,
   XIcon,
 } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Canvas } from "@/components/canvas";
 import { ChatPanel } from "@/components/chat-panel";
 import { Controls } from "@/components/controls";
@@ -17,9 +19,48 @@ import { ReactFlowProvider } from "@/providers/react-flow";
 
 type ViewMode = "app" | "studio";
 
+interface AgentInfo {
+  id: string;
+  name: string;
+}
+
 const Index = () => {
   const [view, setView] = useState<ViewMode>("app");
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
+  const [agent, setAgent] = useState<AgentInfo | null>(null);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [showAgentMenu, setShowAgentMenu] = useState(false);
+
+  // Load active agent from localStorage + fetch agents list
+  useEffect(() => {
+    const id = localStorage.getItem("active_agent_id");
+    const name = localStorage.getItem("active_agent_name");
+    if (id && name) {
+      setAgent({ id, name });
+    }
+
+    fetch("/api/brand-agents")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAgents(data.map((a: AgentInfo) => ({ id: a.id, name: a.name })));
+          // If no active agent but agents exist, use the first one
+          if (!id && data.length > 0) {
+            setAgent({ id: data[0].id, name: data[0].name });
+            localStorage.setItem("active_agent_id", data[0].id);
+            localStorage.setItem("active_agent_name", data[0].name);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const switchAgent = (a: AgentInfo) => {
+    setAgent(a);
+    localStorage.setItem("active_agent_id", a.id);
+    localStorage.setItem("active_agent_name", a.name);
+    setShowAgentMenu(false);
+  };
 
   return (
     <GatewayProvider>
@@ -44,6 +85,55 @@ const Index = () => {
               <span className="text-sm font-medium tracking-tight text-foreground">
                 post<span className="text-primary">.</span>agent
               </span>
+
+              {/* Active agent indicator */}
+              {agent && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAgentMenu(!showAgentMenu)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+                  >
+                    <div className="size-1.5 rounded-full bg-primary" />
+                    {agent.name}
+                  </button>
+
+                  {/* Agent dropdown */}
+                  {showAgentMenu && (
+                    <div className="absolute top-full left-0 mt-1 w-56 rounded-xl border border-border bg-background shadow-lg z-50 py-1">
+                      {agents.map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={() => switchAgent(a)}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary/60 transition-colors ${
+                            a.id === agent.id ? "text-primary font-medium" : "text-foreground"
+                          }`}
+                        >
+                          {a.name}
+                        </button>
+                      ))}
+                      <div className="border-t border-border my-1" />
+                      <Link
+                        href="/onboarding"
+                        className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                      >
+                        <PlusIcon className="size-3.5" />
+                        Novo Brand Agent
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No agent — prompt to create */}
+              {!agent && agents.length === 0 && (
+                <Link
+                  href="/onboarding"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-primary/50 text-primary text-xs font-medium hover:bg-primary/10 transition-colors"
+                >
+                  <PlusIcon className="size-3" />
+                  Criar Brand Agent
+                </Link>
+              )}
             </div>
 
             <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
@@ -87,21 +177,21 @@ const Index = () => {
             {view === "app" ? (
               /* App view — fullscreen chat, centered and polished */
               <div className="flex-1 flex items-stretch justify-center">
-                <ChatPanel fullscreen />
+                <ChatPanel fullscreen agentId={agent?.id} />
               </div>
             ) : (
               /* Studio view — chat sidebar + canvas */
               <>
                 {/* Desktop sidebar */}
                 <div className="hidden md:flex">
-                  <ChatPanel />
+                  <ChatPanel agentId={agent?.id} />
                 </div>
 
                 {/* Mobile chat overlay */}
                 {mobileChatOpen && (
                   <div className="absolute inset-0 top-12 z-40 flex md:hidden">
                     <div className="flex-1 max-w-full">
-                      <ChatPanel fullscreen />
+                      <ChatPanel fullscreen agentId={agent?.id} />
                     </div>
                     <button
                       onClick={() => setMobileChatOpen(false)}
