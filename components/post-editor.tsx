@@ -46,7 +46,7 @@ export interface PostEditorHandle {
       subtitle?: Partial<ActiveTextProps>;
       cta?: Partial<ActiveTextProps>;
     };
-  }) => void;
+  }) => Promise<void>;
 }
 
 interface PostEditorProps {
@@ -360,22 +360,27 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
 
           // Inserir logo se fornecida
           if (logoUrl && logoPosition) {
-            const logoImg = await fabric.FabricImage.fromURL(logoUrl, { crossOrigin: "anonymous" });
-            const scaleX = logoPosition.width / (logoImg.width || 1);
-            logoImg.set({
-              left: logoPosition.x,
-              top: logoPosition.y,
-              scaleX,
-              scaleY: scaleX,
-              selectable: true,
-              hasControls: true,
-              lockRotation: true,
-            });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (logoImg as any)._isLogo = true;
-            canvas.add(logoImg);
+            try {
+              const logoImg = await fabric.FabricImage.fromURL(logoUrl, { crossOrigin: "anonymous" });
+              const scaleX = logoPosition.width / (logoImg.width || 1);
+              logoImg.set({
+                left: logoPosition.x,
+                top: logoPosition.y,
+                scaleX,
+                scaleY: scaleX,
+                selectable: true,
+                hasControls: true,
+                lockRotation: true,
+              });
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (logoImg as any)._isLogo = true;
+              canvas.add(logoImg);
+            } catch {
+              // Logo falhou (CORS ou URL invalida) — continuar sem ela
+            }
           }
 
+          // Sempre renderizar, mesmo sem logo
           canvas.renderAll();
         },
       }),
