@@ -1,10 +1,9 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   try {
     const { url } = await request.json();
 
