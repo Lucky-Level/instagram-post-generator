@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const TextStyleSchema = z.object({
+export const TextStyleSchema = z.object({
   fontFamily: z.string().optional(),
   fontSize: z.number().optional(),
   fontWeight: z.string().optional(),
@@ -15,6 +15,7 @@ const TextStyleSchema = z.object({
   lineHeight: z.number().optional(),
   opacity: z.number().optional(),
   textAlign: z.enum(["left", "center", "right"]).optional(),
+  fontStyle: z.enum(["normal", "italic", "oblique"]).optional(),
 });
 
 export const PostDataSchema = z.object({

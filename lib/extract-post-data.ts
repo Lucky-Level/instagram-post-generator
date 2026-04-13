@@ -23,10 +23,11 @@ export async function extractPostData(rawJson: string): Promise<PostData | null>
     const { object } = await generateObject({
       model: groq("llama-4-scout-17b-16e-instruct"),
       schema: PostDataSchema,
-      prompt: `Extract and complete the post-data JSON. Fix any formatting issues and fill missing required fields with sensible defaults. Raw input:\n${rawJson}`,
+      prompt: `Extrai e completa o post-data JSON abaixo. Corrija formatação e preencha campos obrigatórios faltando com valores padrão em PORTUGUÊS BRASILEIRO. NÃO traduza os textos existentes. Entrada:\n${rawJson}`,
     });
     return object;
-  } catch {
+  } catch (err) {
+    console.error("[extractPostData] Groq fallback failed:", err);
     return null;
   }
 }
