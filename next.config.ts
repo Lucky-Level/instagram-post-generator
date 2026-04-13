@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@resvg/resvg-js", "satori"],
+  serverExternalPackages: ["@resvg/resvg-js", "satori", "sharp"],
 
   images: {
     formats: ["image/avif", "image/webp"],
