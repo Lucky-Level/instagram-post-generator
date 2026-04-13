@@ -52,3 +52,18 @@ export function groupByPlatform(formats: PlatformFormat[]): Record<string, Platf
     return acc;
   }, {} as Record<string, PlatformFormat[]>);
 }
+
+/** Mapeia o aspect_ratio do formato para string aceita pelo FLUX Kontext Pro */
+export function toFluxAspectRatio(aspectRatio: string): string {
+  const map: Record<string, string> = {
+    "1:1":    "1:1",
+    "4:5":    "4:5",
+    "9:16":   "9:16",
+    "16:9":   "16:9",
+    "1.91:1": "16:9",
+    "3:1":    "16:9",
+    "2:3":    "2:3",
+    "1:2.1":  "9:16",
+  };
+  return map[aspectRatio] ?? "1:1";
+}

@@ -13,6 +13,9 @@ interface GenerateImageActionProps {
   modelId: string;
   instructions?: string;
   referenceImages?: string[]; // base64 data URLs
+  aspectRatio?: string;  // ex: "1:1", "9:16", "16:9" — para FLUX Kontext e Pollinations
+  targetWidth?: number;  // para Pollinations e Cloudflare
+  targetHeight?: number; // para Pollinations e Cloudflare
 }
 
 // Provider 1: Gemini Image Generation (Nano Banana) — accepts reference images!
@@ -130,7 +133,7 @@ async function tryCloudflare(prompt: string): Promise<string> {
 }
 
 // Provider 3: Pollinations (free, no key, rate limited)
-async function tryPollinations(prompt: string): Promise<string> {
+async function tryPollinations(prompt: string, width?: number, height?: number): Promise<string> {
   // Pollinations strips non-word chars (colons, uppercase) via regex below;
   // use plain-English variant instead of NO_TEXT_SUFFIX to survive sanitization.
   const promptWithSuffix = prompt + " no text no typography no letters no words clean background only";
@@ -141,13 +144,15 @@ async function tryPollinations(prompt: string): Promise<string> {
     .slice(0, 500);
 
   const encoded = encodeURIComponent(clean);
+  const w = width ?? 1024;
+  const h = height ?? 1024;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) {
       await new Promise((r) => setTimeout(r, attempt * 5000));
     }
     const seed = Date.now() + attempt;
-    const url = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
     const response = await fetch(url);
     if (response.status === 429 || response.status === 500) continue;
     if (!response.ok) throw new Error(`Pollinations: HTTP ${response.status}`);
@@ -163,6 +168,9 @@ export const generateImageAction = async ({
   prompt,
   instructions,
   referenceImages,
+  aspectRatio,
+  targetWidth,
+  targetHeight,
 }: GenerateImageActionProps): Promise<
   | { url: string; type: string; description: string }
   | { error: string }
@@ -180,6 +188,7 @@ export const generateImageAction = async ({
     const result = await generateWithFacePreservation({
       prompt: fullPrompt,
       referenceImageUrl: refImage,
+      aspectRatio: aspectRatio ?? "1:1",
     });
     if (!("error" in result)) {
       return result;
@@ -198,11 +207,12 @@ export const generateImageAction = async ({
           fn: () => tryGemini(fullPrompt, referenceImages),
         },
         { name: "Cloudflare FLUX", fn: () => tryCloudflare(fullPrompt) },
+        { name: "Pollinations", fn: () => tryPollinations(fullPrompt, targetWidth, targetHeight) },
       ]
     : [
         { name: "Gemini", fn: () => tryGemini(fullPrompt) },
         { name: "Cloudflare FLUX", fn: () => tryCloudflare(fullPrompt) },
-        { name: "Pollinations", fn: () => tryPollinations(fullPrompt) },
+        { name: "Pollinations", fn: () => tryPollinations(fullPrompt, targetWidth, targetHeight) },
       ];
 
   const errors: string[] = [];

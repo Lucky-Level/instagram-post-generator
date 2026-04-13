@@ -12,6 +12,7 @@ import {
   Loader2Icon,
   PaperclipIcon,
   PencilIcon,
+  SparklesIcon,
   ThumbsUpIcon,
   ThumbsDownIcon,
   XCircleIcon,
@@ -31,9 +32,10 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { generateImageAction } from "@/app/actions/image/create";
+import { editWithFlux } from "@/app/actions/image/edit-with-flux";
 import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
-import { type PlatformFormat, getPlatformFormats, groupByPlatform } from "@/lib/platform-formats";
+import { type PlatformFormat, getPlatformFormats, groupByPlatform, toFluxAspectRatio } from "@/lib/platform-formats";
 import { PostEditorModal } from "./post-editor-modal";
 import type { ActiveTextProps } from "./post-editor";
 import type { PostData } from "@/lib/post-data-schema";
@@ -138,6 +140,12 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     error: string | null;
   } | null>(null);
   const [productAdImages, setProductAdImages] = useState<Array<{ url: string; description: string }>>([]);
+  const [aiEditState, setAiEditState] = useState<{
+    msgId: string;
+    idx: number;
+    prompt: string;
+    loading: boolean;
+  } | null>(null);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -182,8 +190,10 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     textStyles?: GeneratedImage["textStyles"];
     logo?: { x: number; y: number; width: number };
     logoUrl?: string;
+    width?: number;
+    height?: number;
   }): Promise<string> => {
-    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl } = params;
+    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl, width, height } = params;
 
     // 1. Renderizar tipografia via Satori
     let typographyPng: string | undefined;
@@ -192,7 +202,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         const typoRes = await fetch("/api/render-typography", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ headline, subtitle, cta, textStyles }),
+          body: JSON.stringify({ headline, subtitle, cta, textStyles, width, height }),
         });
         if (typoRes.ok) {
           const typoData = await typoRes.json();
@@ -213,6 +223,8 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           typographyPng,
           logoUrl,
           logoPosition: logo,
+          width,
+          height,
         }),
       });
       if (composeRes.ok) {
@@ -225,6 +237,52 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
     return backgroundUrl;
   }, []);
+
+  const handleAiEdit = useCallback(async (msgId: string, idx: number, currentUrl: string) => {
+    if (!aiEditState || aiEditState.loading) return;
+    const prompt = aiEditState.prompt.trim();
+    if (!prompt) return;
+
+    setAiEditState((prev) => prev ? { ...prev, loading: true } : null);
+    toast.info("Editando com IA...");
+
+    try {
+      const result = await editWithFlux({ imageUrl: currentUrl, prompt });
+
+      if ("error" in result) {
+        // Fallback: Gemini via /api/edit-image
+        toast.info("FLUX indisponível, tentando com Gemini...");
+        const fallbackRes = await fetch("/api/edit-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64: currentUrl, action: "edit", prompt }),
+        });
+        const fallbackData = await fallbackRes.json();
+        if (fallbackRes.ok && fallbackData.url) {
+          setChatImages((prev) => {
+            const imgs = [...(prev[msgId] ?? [])];
+            imgs[idx] = { ...imgs[idx], url: fallbackData.url };
+            return { ...prev, [msgId]: imgs };
+          });
+          toast.success("Imagem editada!");
+        } else {
+          toast.error(`Erro ao editar: ${result.error}`);
+        }
+      } else {
+        setChatImages((prev) => {
+          const imgs = [...(prev[msgId] ?? [])];
+          imgs[idx] = { ...imgs[idx], url: result.url };
+          return { ...prev, [msgId]: imgs };
+        });
+        toast.success("Imagem editada!");
+      }
+    } catch (err) {
+      toast.error("Erro ao editar imagem");
+      console.error(err);
+    } finally {
+      setAiEditState(null);
+    }
+  }, [aiEditState]);
 
   const createProductAd = useCallback(async (sourceFile: File, description: string) => {
     setProductAdState({ status: "removing-bg", error: null });
@@ -307,6 +365,14 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       setStepsCollapsed(false);
       const currentRefs = referenceImagesRef.current;
       console.log(`[Pipeline] Starting with ${currentRefs.length} reference images`);
+
+      // Compute primary platform format dimensions
+      const allFormats = getPlatformFormats();
+      const primaryFormat = allFormats.find((f) => f.id === selectedFormats[0])
+        ?? allFormats.find((f) => f.id === "ig-feed-sq")!;
+      const primaryW = primaryFormat.width;
+      const primaryH = primaryFormat.height;
+      const primaryAspectRatio = toFluxAspectRatio(primaryFormat.aspect_ratio);
 
       try {
         const isCarousel = data.slides && data.slides.length > 0;
@@ -429,6 +495,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 prompt: slides[i].imagePrompt ?? "",
                 modelId: "gemini",
                 referenceImages: refs.length > 0 ? refs : undefined,
+                aspectRatio: primaryAspectRatio,
+                targetWidth: primaryW,
+                targetHeight: primaryH,
               });
 
               if (!("error" in result)) {
@@ -455,9 +524,11 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                   cta: data.cta,
                   textStyles: data.textStyles,
                   logo: data.logo,
-                  logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+                  logoUrl: undefined,
+                  width: primaryW,
+                  height: primaryH,
                 });
-                addChatImage({ url: composedSlideUrl, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+                addChatImage({ url: composedSlideUrl, description: result.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -578,6 +649,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 prompt: data.imagePrompt,
                 modelId: "gemini",
                 referenceImages: refs.length > 0 ? refs : undefined,
+                aspectRatio: primaryAspectRatio,
+                targetWidth: primaryW,
+                targetHeight: primaryH,
               });
             }
 
@@ -607,15 +681,16 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 cta: data.cta,
                 textStyles: data.textStyles,
                 logo: data.logo,
-                logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+                logoUrl: undefined,
+                width: primaryW,
+                height: primaryH,
               });
-              addChatImage({ url: composedUrl, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+              addChatImage({ url: composedUrl, description: imageResult.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name} (${primaryW}×${primaryH})`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
               updateStep("media-node", "done");
 
               // Generate variants for other selected platform formats
-              const allFormats = getPlatformFormats();
               const extraFormats = selectedFormats
-                .filter((fid) => fid !== "ig-feed-sq")
+                .filter((fid) => fid !== selectedFormats[0])
                 .map((fid) => allFormats.find((f) => f.id === fid))
                 .filter(Boolean) as PlatformFormat[];
 
@@ -642,7 +717,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         cta: data.cta,
                         textStyles: data.textStyles,
                         logo: data.logo,
-                        logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+                        logoUrl: undefined,
+                        width: fmt.width,
+                        height: fmt.height,
                       });
                       addChatImage({
                         url: composedVariantUrl,
@@ -678,7 +755,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         setGenerating(false);
       }
     },
-    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, composeCreative],
+    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, composeCreative, selectedFormats],
   );
 
   const { messages, sendMessage, status } = useChat({
@@ -876,7 +953,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
             <div className="size-2 rounded-full bg-primary" />
-            <h2 className="font-medium text-sm">Post Agent</h2>
+            <h2 className="font-medium text-sm">Agente Criativo</h2>
           </div>
         </div>
       )}
@@ -990,24 +1067,73 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                           <button
                             onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url, headline: img.headline, subtitle: img.subtitle, cta: img.cta, logo: img.logo, textStyles: img.textStyles })}
                             className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
-                            title="Edit image"
+                            title="Editar no canvas"
                           >
                             <PencilIcon className="size-4" />
                           </button>
                           <button
+                            onClick={() => setAiEditState({ msgId: msg.id, idx, prompt: "", loading: false })}
+                            className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                            title="Editar com IA"
+                          >
+                            <SparklesIcon className="size-4" />
+                          </button>
+                          <button
                             onClick={() => {
                               const link = document.createElement("a");
-                              link.download = `post-${idx + 1}.png`;
+                              link.download = `criativo-${idx + 1}.png`;
                               link.href = img.url;
                               link.click();
                             }}
                             className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
-                            title="Download image"
+                            title="Download"
                           >
                             <DownloadIcon className="size-4" />
                           </button>
                         </div>
                       </div>
+                      {/* Input de edição por IA */}
+                      {aiEditState?.msgId === msg.id && aiEditState.idx === idx && (
+                        <div className="px-2 pb-2 pt-1 border-t border-border bg-secondary/20 rounded-b-xl -mt-1">
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleAiEdit(msg.id, idx, img.url);
+                            }}
+                            className="flex gap-2 items-center"
+                          >
+                            <input
+                              autoFocus
+                              type="text"
+                              placeholder="Descreva a edição... (ex: mude o fundo para azul)"
+                              value={aiEditState.prompt}
+                              onChange={(e) => setAiEditState((prev) => prev ? { ...prev, prompt: e.target.value } : null)}
+                              disabled={aiEditState.loading}
+                              className="flex-1 text-xs bg-transparent border border-border rounded-md px-2 py-1.5 outline-none focus:border-primary placeholder:text-muted-foreground/60 disabled:opacity-50"
+                            />
+                            {aiEditState.loading ? (
+                              <Loader2Icon className="size-4 animate-spin text-muted-foreground shrink-0" />
+                            ) : (
+                              <div className="flex gap-1 shrink-0">
+                                <button
+                                  type="submit"
+                                  disabled={!aiEditState.prompt.trim()}
+                                  className="text-xs px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors"
+                                >
+                                  Aplicar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAiEditState(null)}
+                                  className="text-xs px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <XIcon className="size-3" />
+                                </button>
+                              </div>
+                            )}
+                          </form>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1 px-2 py-1">
                         <button
                           onClick={async () => {
@@ -1103,7 +1229,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 onClick={() => handleQuickReply("Sim, cria!")}
                 className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
-                Let&apos;s go!
+                Criar!
               </button>
               <button
                 onClick={() => handleQuickReply("Quero ajustar algumas coisas")}
@@ -1142,7 +1268,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                   )}
                 />
                 <span className="text-sm font-medium">
-                  {generating ? "Building workflow..." : "Workflow complete"}
+                  {generating ? "Criando criativo..." : "Criativo criado"}
                 </span>
               </div>
               <span className="text-xs text-muted-foreground">

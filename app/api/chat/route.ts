@@ -5,7 +5,7 @@ import { createServerClient } from "@/lib/supabase-server";
 
 export const maxDuration = 60;
 
-const BASE_SYSTEM_PROMPT = `Você é o Post Agent — um diretor criativo de agência premium.
+const BASE_SYSTEM_PROMPT = `Você é o Agente Criativo — um diretor criativo de agência premium.
 
 ## COMO INTERAGIR
 
@@ -72,7 +72,7 @@ Quando o usuário aprovar o briefing, gere o bloco JSON no final da resposta.
   "headline": "texto principal do post (máx 8 palavras)",
   "subtitle": "subtítulo ou complemento (opcional, máx 12 palavras)",
   "cta": "call to action direto (máx 5 palavras)",
-  "legenda": "hook forte + corpo + fechamento (2-4 linhas para o caption do Instagram)",
+  "legenda": "hook forte + corpo + fechamento (2-4 linhas para o caption)",
   "hashtags": ["3-5 hashtags estratégicas"],
   "imagePrompt": "prompt técnico de 200-400 palavras em inglês descrevendo APENAS o fundo visual, SEM qualquer texto",
   "textStyles": {

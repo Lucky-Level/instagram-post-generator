@@ -3,8 +3,6 @@ import satori, { type Font as SatoriFont } from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import type { TextStyle } from "@/lib/post-data-schema";
 
-const CANVAS_SIZE = 1080;
-
 interface RenderTypographyRequest {
   headline?: string;
   subtitle?: string;
@@ -14,6 +12,8 @@ interface RenderTypographyRequest {
     subtitle?: TextStyle;
     cta?: TextStyle;
   };
+  width?: number;
+  height?: number;
 }
 
 async function loadGoogleFontBuffer(family: string, weight = 400): Promise<ArrayBuffer | null> {
@@ -52,12 +52,20 @@ export async function POST(req: Request) {
   try {
     const body: RenderTypographyRequest = await req.json();
     const { headline, subtitle, cta, textStyles } = body;
+    const W = body.width ?? 1080;
+    const H = body.height ?? 1080;
 
     const layers = [
-      { key: "headline" as const, text: headline, y: 180, defaultSize: 72, bold: true },
-      { key: "subtitle" as const, text: subtitle, y: 680, defaultSize: 42, bold: false },
-      { key: "cta" as const, text: cta, y: 880, defaultSize: 32, bold: false },
-    ].filter((l): l is typeof l & { text: string } => typeof l.text === "string" && l.text.trim().length > 0);
+      { key: "headline" as const, text: headline, yFrac: 180/1080, defaultSizeFrac: 72/1080, bold: true },
+      { key: "subtitle" as const, text: subtitle, yFrac: 680/1080, defaultSizeFrac: 42/1080, bold: false },
+      { key: "cta"      as const, text: cta,      yFrac: 880/1080, defaultSizeFrac: 32/1080, bold: false },
+    ]
+      .filter((l): l is typeof l & { text: string } => typeof l.text === "string" && l.text.trim().length > 0)
+      .map((l) => ({
+        ...l,
+        y: Math.round(l.yFrac * H),
+        defaultSize: Math.round(l.defaultSizeFrac * H),
+      }));
 
     // Load fonts needed
     const fontFamilies = new Set<string>(["Inter"]);
@@ -149,8 +157,8 @@ export async function POST(req: Request) {
           style: {
             display: "flex",
             flexDirection: "column",
-            width: CANVAS_SIZE,
-            height: CANVAS_SIZE,
+            width: W,
+            height: H,
             position: "relative",
             background: "transparent",
           },
@@ -169,7 +177,7 @@ export async function POST(req: Request) {
                     : el.style.textAlign === "right"
                       ? "flex-end"
                       : "flex-start",
-                padding: "0 90px",
+                padding: `0 ${Math.round(90 / 1080 * W)}px`,
                 opacity: el.style.opacity,
                 filter: el.style.hasShadow ? `url(#shadow-${el.key})` : undefined,
               },
@@ -199,8 +207,8 @@ export async function POST(req: Request) {
         },
       } as Parameters<typeof satori>[0],
       {
-        width: CANVAS_SIZE,
-        height: CANVAS_SIZE,
+        width: W,
+        height: H,
         fonts,
       },
     );
@@ -216,7 +224,7 @@ export async function POST(req: Request) {
 
     // Convert SVG → PNG via resvg
     const resvg = new Resvg(svgWithFilters, {
-      fitTo: { mode: "width", value: CANVAS_SIZE },
+      fitTo: { mode: "width", value: W },
     });
     const pngData = resvg.render();
     const pngBuffer = pngData.asPng();
