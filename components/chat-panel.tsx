@@ -61,11 +61,18 @@ interface PostData {
   };
 }
 
-function parsePostData(text: string): PostData | null {
+async function parsePostData(text: string): Promise<PostData | null> {
   const match = text.match(/<post-data>\s*([\s\S]*?)\s*<\/post-data>/);
   if (!match) return null;
   try {
-    return JSON.parse(match[1]) as PostData;
+    // Via Groq validation (with fallback to direct parse)
+    const parseRes = await fetch("/api/parse-post-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raw: match[1] }),
+    });
+    const data = parseRes.ok ? (await parseRes.json() as PostData) : (JSON.parse(match[1]) as PostData);
+    return data;
   } catch {
     return null;
   }
@@ -622,7 +629,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           .map((p) => (p as { type: "text"; text: string }).text)
           .join("") ?? "";
 
-      const postData = parsePostData(fullText);
+      const postData = await parsePostData(fullText);
       if (postData) {
         activeMsgIdRef.current = message.id;
         await createPipeline(postData);
@@ -868,7 +875,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           const cleaned = cleanMessageText(text);
           if (!cleaned) return null;
 
-          const hasPostData = parsePostData(text);
+          const hasPostData = /<post-data>[\s\S]*?<\/post-data>/.test(text);
 
           return (
             <div key={msg.id} className="space-y-2">
