@@ -37,7 +37,10 @@ export async function POST(req: Request) {
     // 2. Typography layer (PNG transparente)
     if (typographyPng) {
       const typoBuffer = await urlToBuffer(typographyPng);
-      layers.push({ input: typoBuffer, top: 0, left: 0 });
+      const resizedTypo = await sharp(typoBuffer)
+        .resize(CANVAS, CANVAS, { fit: "fill" })
+        .toBuffer();
+      layers.push({ input: resizedTypo, top: 0, left: 0 });
     }
 
     // 3. Logo layer
@@ -57,10 +60,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Composite all layers (idiomatic Sharp chaining to avoid TypeScript reassignment issues)
-    const outputBuffer = await sharp(bgBuffer)
-      .resize(CANVAS, CANVAS, { fit: "cover", position: "center" })
-      .composite(layers.length > 0 ? layers : [])
+    // 4. Composite all layers (skip composite call when layers is empty)
+    const pipeline = sharp(bgBuffer).resize(CANVAS, CANVAS, { fit: "cover", position: "center" });
+    const outputBuffer = await (layers.length > 0 ? pipeline.composite(layers) : pipeline)
       .png({ compressionLevel: 6 })
       .toBuffer();
 
