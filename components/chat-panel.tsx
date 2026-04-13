@@ -800,7 +800,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     !generating &&
     lastAssistantText &&
     isConfirmationMessage(lastAssistantText) &&
-    !parsePostData(lastAssistantText);
+    !/<post-data>[\s\S]*?<\/post-data>/.test(lastAssistantText);
 
   return (
     <div className={`flex h-full flex-col border-r border-border bg-background ${w}`}>
