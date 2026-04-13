@@ -322,7 +322,16 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                       : n,
                   ),
                 );
-                addChatImage({ url: result.url, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+                const composedSlideUrl = await composeCreative({
+                  backgroundUrl: result.url,
+                  headline: data.headline,
+                  subtitle: data.subtitle,
+                  cta: data.cta,
+                  textStyles: data.textStyles,
+                  logo: data.logo,
+                  logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+                });
+                addChatImage({ url: composedSlideUrl, description: result.description, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -465,7 +474,16 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     : n,
                 ),
               );
-              addChatImage({ url: imageResult.url, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+              const composedUrl = await composeCreative({
+                backgroundUrl: imageResult.url,
+                headline: data.headline,
+                subtitle: data.subtitle,
+                cta: data.cta,
+                textStyles: data.textStyles,
+                logo: data.logo,
+                logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+              });
+              addChatImage({ url: composedUrl, description: imageResult.description, platform: "Instagram Feed Square", headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
               updateStep("media-node", "done");
 
               // Generate variants for other selected platform formats
@@ -491,8 +509,17 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     });
                     if (composeRes.ok) {
                       const composed = await composeRes.json();
+                      const composedVariantUrl = await composeCreative({
+                        backgroundUrl: composed.url,
+                        headline: data.headline,
+                        subtitle: data.subtitle,
+                        cta: data.cta,
+                        textStyles: data.textStyles,
+                        logo: data.logo,
+                        logoUrl: undefined, // TODO: pass logoUrl from brand_kit
+                      });
                       addChatImage({
-                        url: composed.url,
+                        url: composedVariantUrl,
                         description: `${fmt.platform} - ${fmt.format_name} (${fmt.width}x${fmt.height})`,
                         platform: `${fmt.platform} ${fmt.format_name}`,
                         headline: data.headline,
@@ -696,6 +723,58 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     setInput(template.defaultPrompt);
     setShowTemplates(false);
   };
+
+  const composeCreative = useCallback(async (params: {
+    backgroundUrl: string;
+    headline?: string;
+    subtitle?: string;
+    cta?: string;
+    textStyles?: GeneratedImage["textStyles"];
+    logo?: { x: number; y: number; width: number };
+    logoUrl?: string;
+  }): Promise<string> => {
+    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl } = params;
+
+    // 1. Renderizar tipografia via Satori
+    let typographyPng: string | undefined;
+    if (headline || subtitle || cta) {
+      try {
+        const typoRes = await fetch("/api/render-typography", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ headline, subtitle, cta, textStyles }),
+        });
+        if (typoRes.ok) {
+          const typoData = await typoRes.json();
+          typographyPng = typoData.png;
+        }
+      } catch {
+        // Tipografia falhou — continua sem ela
+      }
+    }
+
+    // 2. Composite via Sharp
+    try {
+      const composeRes = await fetch("/api/compose-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          backgroundUrl,
+          typographyPng,
+          logoUrl,
+          logoPosition: logo,
+        }),
+      });
+      if (composeRes.ok) {
+        const composeData = await composeRes.json();
+        return composeData.url;
+      }
+    } catch {
+      // Composite falhou — retorna background original
+    }
+
+    return backgroundUrl;
+  }, []);
 
   const w = fullscreen ? "w-full max-w-2xl mx-auto" : "w-80 shrink-0 max-md:w-full";
 
