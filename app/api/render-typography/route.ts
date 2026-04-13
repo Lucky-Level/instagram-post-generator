@@ -210,9 +210,8 @@ export async function POST(req: Request) {
       ? svg
       : svg.replace("<svg", `<svg xmlns="http://www.w3.org/2000/svg"`);
 
-    const firstClose = svgBase.indexOf(">") + 1;
     const svgWithFilters = filters
-      ? svgBase.slice(0, firstClose) + `<defs>${filters}</defs>` + svgBase.slice(firstClose)
+      ? svgBase.replace(/(<svg[^>]*>)/, `$1<defs>${filters}</defs>`)
       : svgBase;
 
     // Convert SVG → PNG via resvg

@@ -175,6 +175,58 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     }));
   }, []);
 
+  const composeCreative = useCallback(async (params: {
+    backgroundUrl: string;
+    headline?: string;
+    subtitle?: string;
+    cta?: string;
+    textStyles?: GeneratedImage["textStyles"];
+    logo?: { x: number; y: number; width: number };
+    logoUrl?: string;
+  }): Promise<string> => {
+    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl } = params;
+
+    // 1. Renderizar tipografia via Satori
+    let typographyPng: string | undefined;
+    if (headline || subtitle || cta) {
+      try {
+        const typoRes = await fetch("/api/render-typography", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ headline, subtitle, cta, textStyles }),
+        });
+        if (typoRes.ok) {
+          const typoData = await typoRes.json();
+          typographyPng = typoData.png;
+        }
+      } catch {
+        // Tipografia falhou — continua sem ela
+      }
+    }
+
+    // 2. Composite via Sharp
+    try {
+      const composeRes = await fetch("/api/compose-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          backgroundUrl,
+          typographyPng,
+          logoUrl,
+          logoPosition: logo,
+        }),
+      });
+      if (composeRes.ok) {
+        const composeData = await composeRes.json();
+        return composeData.url;
+      }
+    } catch {
+      // Composite falhou — retorna background original
+    }
+
+    return backgroundUrl;
+  }, []);
+
   const createPipeline = useCallback(
     async (data: PostData) => {
       setGenerating(true);
@@ -525,6 +577,8 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         headline: data.headline,
                         subtitle: data.subtitle,
                         cta: data.cta,
+                        logo: data.logo,
+                        textStyles: data.textStyles,
                       });
                     }
                   } catch {
@@ -550,7 +604,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         setGenerating(false);
       }
     },
-    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage],
+    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, composeCreative],
   );
 
   const { messages, sendMessage, status } = useChat({
@@ -723,58 +777,6 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     setInput(template.defaultPrompt);
     setShowTemplates(false);
   };
-
-  const composeCreative = useCallback(async (params: {
-    backgroundUrl: string;
-    headline?: string;
-    subtitle?: string;
-    cta?: string;
-    textStyles?: GeneratedImage["textStyles"];
-    logo?: { x: number; y: number; width: number };
-    logoUrl?: string;
-  }): Promise<string> => {
-    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl } = params;
-
-    // 1. Renderizar tipografia via Satori
-    let typographyPng: string | undefined;
-    if (headline || subtitle || cta) {
-      try {
-        const typoRes = await fetch("/api/render-typography", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ headline, subtitle, cta, textStyles }),
-        });
-        if (typoRes.ok) {
-          const typoData = await typoRes.json();
-          typographyPng = typoData.png;
-        }
-      } catch {
-        // Tipografia falhou — continua sem ela
-      }
-    }
-
-    // 2. Composite via Sharp
-    try {
-      const composeRes = await fetch("/api/compose-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          backgroundUrl,
-          typographyPng,
-          logoUrl,
-          logoPosition: logo,
-        }),
-      });
-      if (composeRes.ok) {
-        const composeData = await composeRes.json();
-        return composeData.url;
-      }
-    } catch {
-      // Composite falhou — retorna background original
-    }
-
-    return backgroundUrl;
-  }, []);
 
   const w = fullscreen ? "w-full max-w-2xl mx-auto" : "w-80 shrink-0 max-md:w-full";
 
