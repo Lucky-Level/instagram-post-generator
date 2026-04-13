@@ -137,6 +137,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     status: "idle" | "removing-bg" | "generating-scene" | "composing" | "error";
     error: string | null;
   } | null>(null);
+  const [productAdImages, setProductAdImages] = useState<Array<{ url: string; description: string }>>([]);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -228,11 +229,24 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const createProductAd = useCallback(async (sourceFile: File, description: string) => {
     setProductAdState({ status: "removing-bg", error: null });
 
-    // 1. Converter o arquivo para base64 (para enviar ao FLUX)
-    const reader = new FileReader();
+    // 1. Redimensionar e converter para base64 (max 1024px, para não exceder body limit)
     const originalBase64 = await new Promise<string>((resolve) => {
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(sourceFile);
+      const img = new window.Image();
+      const objectUrl = URL.createObjectURL(sourceFile);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const MAX = 1024;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(""); return; }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(""); };
+      img.src = objectUrl;
     });
 
     // 2. Remover fundo no browser (WASM)
@@ -276,11 +290,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       if (!composeRes.ok) throw new Error("Falha ao compositar");
 
       const composeData = await composeRes.json();
-      const msgId = `product-ad-${Date.now()}`;
-      setChatImages((prev) => ({
-        ...prev,
-        [msgId]: [{ url: composeData.url, description: `Anúncio: ${description}`, platform: "Product Ad" }],
-      }));
+      setProductAdImages((prev) => [...prev, { url: composeData.url, description: `Anúncio: ${description}` }]);
       toast.success("Anúncio criado!");
     } catch {
       setProductAdState({ status: "error", error: "Falha ao compositar" });
@@ -289,7 +299,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     }
 
     setProductAdState(null);
-  }, [removeBackground, setChatImages]);
+  }, [removeBackground, setProductAdImages]);
 
   const createPipeline = useCallback(
     async (data: PostData) => {
@@ -1179,13 +1189,61 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       {/* Product Ad status overlay */}
       {productAdState && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-2 bg-muted/50 border-t border-border">
-          <Loader2Icon className="h-3 w-3 animate-spin shrink-0" />
-          <span>
-            {productAdState.status === "removing-bg" && "Removendo fundo..."}
-            {productAdState.status === "generating-scene" && "Gerando cena com IA..."}
-            {productAdState.status === "composing" && "Compondo criativo..."}
-            {productAdState.status === "error" && `Erro: ${productAdState.error}`}
-          </span>
+          {productAdState.status === "error" ? (
+            <>
+              <span className="text-destructive">Erro: {productAdState.error}</span>
+              <button
+                type="button"
+                onClick={() => setProductAdState(null)}
+                className="ml-auto text-muted-foreground hover:text-foreground"
+              >
+                <XIcon className="size-3" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Loader2Icon className="h-3 w-3 animate-spin shrink-0" />
+              <span>
+                {productAdState.status === "removing-bg" && "Removendo fundo..."}
+                {productAdState.status === "generating-scene" && "Gerando cena com IA..."}
+                {productAdState.status === "composing" && "Compondo criativo..."}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Product Ad results */}
+      {productAdImages.length > 0 && (
+        <div className="px-4 pb-2 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Anúncios gerados</p>
+          <div className="grid grid-cols-1 gap-2">
+            {productAdImages.map((img, idx) => (
+              <div key={idx} className="group relative rounded-xl overflow-hidden border border-border bg-secondary/30">
+                <Image
+                  src={img.url}
+                  alt={img.description}
+                  width={400}
+                  height={400}
+                  className="w-full h-auto object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.download = `product-ad-${idx + 1}.png`;
+                      link.href = img.url;
+                      link.click();
+                    }}
+                    className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
+                    title="Download"
+                  >
+                    <DownloadIcon className="size-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -1210,7 +1268,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               <button
                 type="button"
                 onClick={() => createProductAd(img.file, input.trim() || "produto")}
-                disabled={productAdState !== null}
+                disabled={productAdState !== null && productAdState.status !== "error"}
                 className="absolute bottom-0 left-0 right-0 bg-black/80 hover:bg-black text-white text-[9px] font-medium rounded-b-lg px-1 py-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity disabled:cursor-not-allowed"
               >
                 Criar anúncio

@@ -1,12 +1,11 @@
 // hooks/use-background-removal.ts
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 type BgRemovalStatus = "idle" | "loading" | "processing" | "done" | "error";
 
 export function useBackgroundRemoval() {
   const [status, setStatus] = useState<BgRemovalStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
 
   const removeBackground = useCallback(async (file: File): Promise<string | null> => {
     setError(null);
@@ -15,22 +14,19 @@ export function useBackgroundRemoval() {
     try {
       // Dynamic import to avoid SSR — WASM only runs in browser
       const { removeBackground: removeBg } = await import("@imgly/background-removal");
-      loadedRef.current = true;
       setStatus("processing");
 
       const resultBlob = await removeBg(file, {
         output: { format: "image/png", quality: 0.9 },
       });
 
-      // Convert Blob to base64 data URL without using Buffer (browser-safe)
-      const arrayBuffer = await resultBlob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      let binary = "";
-      for (let i = 0; i < uint8Array.length; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
-      }
-      const base64 = btoa(binary);
-      const dataUrl = `data:image/png;base64,${base64}`;
+      // Convert Blob to base64 data URL using FileReader (browser-native, O(n))
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.onload = () => resolve(fileReader.result as string);
+        fileReader.onerror = reject;
+        fileReader.readAsDataURL(resultBlob);
+      });
 
       setStatus("done");
       return dataUrl;
