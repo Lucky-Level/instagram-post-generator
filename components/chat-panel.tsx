@@ -37,6 +37,8 @@ import { type PlatformFormat, getPlatformFormats, groupByPlatform } from "@/lib/
 import { PostEditorModal } from "./post-editor-modal";
 import type { ActiveTextProps } from "./post-editor";
 import type { PostData } from "@/lib/post-data-schema";
+import { useBackgroundRemoval } from "@/hooks/use-background-removal";
+import { generateAdScene } from "@/app/actions/image/generate-ad-scene";
 
 interface PipelineStep {
   id: string;
@@ -113,6 +115,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { setNodes, setEdges, fitView, setCenter } = useReactFlow();
+  const { removeBackground } = useBackgroundRemoval();
   const [pipelineSteps, setPipelineSteps] = useState<PipelineStep[]>([]);
   const [stepsCollapsed, setStepsCollapsed] = useState(false);
   // Track generated images per assistant message so they render inline in chat
@@ -130,6 +133,10 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   } | null>(null);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
+  const [productAdState, setProductAdState] = useState<{
+    status: "idle" | "removing-bg" | "generating-scene" | "composing" | "error";
+    error: string | null;
+  } | null>(null);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -217,6 +224,72 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
     return backgroundUrl;
   }, []);
+
+  const createProductAd = useCallback(async (sourceFile: File, description: string) => {
+    setProductAdState({ status: "removing-bg", error: null });
+
+    // 1. Converter o arquivo para base64 (para enviar ao FLUX)
+    const reader = new FileReader();
+    const originalBase64 = await new Promise<string>((resolve) => {
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(sourceFile);
+    });
+
+    // 2. Remover fundo no browser (WASM)
+    toast.info("Removendo fundo do produto...");
+    const cutoutUrl = await removeBackground(sourceFile);
+    if (!cutoutUrl) {
+      setProductAdState({ status: "error", error: "Falha ao remover fundo" });
+      toast.error("Falha ao remover fundo");
+      return;
+    }
+
+    setProductAdState({ status: "generating-scene", error: null });
+
+    // 3. Gerar cena com FLUX Kontext Pro
+    toast.info("Gerando cena publicitária...");
+    const sceneResult = await generateAdScene({
+      productImageUrl: originalBase64,
+      productDescription: description,
+    });
+
+    if ("error" in sceneResult) {
+      setProductAdState({ status: "error", error: sceneResult.error });
+      toast.error(`Erro ao gerar cena: ${sceneResult.error}`);
+      return;
+    }
+
+    setProductAdState({ status: "composing", error: null });
+
+    // 4. Compositar: cena + produto recortado
+    toast.info("Compondo criativo final...");
+    try {
+      const composeRes = await fetch("/api/compose-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          backgroundUrl: sceneResult.url,
+          productLayerUrl: cutoutUrl,
+        }),
+      });
+
+      if (!composeRes.ok) throw new Error("Falha ao compositar");
+
+      const composeData = await composeRes.json();
+      const msgId = `product-ad-${Date.now()}`;
+      setChatImages((prev) => ({
+        ...prev,
+        [msgId]: [{ url: composeData.url, description: `Anúncio: ${description}`, platform: "Product Ad" }],
+      }));
+      toast.success("Anúncio criado!");
+    } catch {
+      setProductAdState({ status: "error", error: "Falha ao compositar" });
+      toast.error("Falha ao compositar o anúncio");
+      return;
+    }
+
+    setProductAdState(null);
+  }, [removeBackground, setChatImages]);
 
   const createPipeline = useCallback(
     async (data: PostData) => {
@@ -1103,11 +1176,24 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         )}
       </div>
 
+      {/* Product Ad status overlay */}
+      {productAdState && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground px-4 py-2 bg-muted/50 border-t border-border">
+          <Loader2Icon className="h-3 w-3 animate-spin shrink-0" />
+          <span>
+            {productAdState.status === "removing-bg" && "Removendo fundo..."}
+            {productAdState.status === "generating-scene" && "Gerando cena com IA..."}
+            {productAdState.status === "composing" && "Compondo criativo..."}
+            {productAdState.status === "error" && `Erro: ${productAdState.error}`}
+          </span>
+        </div>
+      )}
+
       {/* Uploaded images preview */}
       {uploadedImages.length > 0 && (
         <div className="px-4 pb-2 flex gap-2 flex-wrap">
           {uploadedImages.map((img, idx) => (
-            <div key={idx} className="relative inline-block">
+            <div key={idx} className="relative inline-block group/img">
               <Image
                 src={img.url}
                 alt={`Referencia ${idx + 1}`}
@@ -1120,6 +1206,14 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-destructive text-white flex items-center justify-center"
               >
                 <XIcon className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => createProductAd(img.file, input.trim() || "produto")}
+                disabled={productAdState !== null}
+                className="absolute bottom-0 left-0 right-0 bg-black/80 hover:bg-black text-white text-[9px] font-medium rounded-b-lg px-1 py-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity disabled:cursor-not-allowed"
+              >
+                Criar anúncio
               </button>
             </div>
           ))}
