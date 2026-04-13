@@ -39,6 +39,18 @@ export const PostDataSchema = z.object({
       width: z.number(),
     })
     .optional(),
+  type: z.enum(["video"]).optional(),
+  action: z.enum(["edit"]).optional(),
+  slides: z
+    .array(
+      z.object({
+        imagePrompt: z.string().optional(),
+        headline: z.string().optional(),
+        subtitle: z.string().optional(),
+        cta: z.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type PostData = z.infer<typeof PostDataSchema>;

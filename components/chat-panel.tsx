@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { type PlatformFormat, getPlatformFormats, groupByPlatform } from "@/lib/platform-formats";
 import { PostEditorModal } from "./post-editor-modal";
 import type { ActiveTextProps } from "./post-editor";
+import type { PostData } from "@/lib/post-data-schema";
 
 interface PipelineStep {
   id: string;
@@ -43,23 +44,6 @@ interface PipelineStep {
   status: "pending" | "in-progress" | "done" | "error";
 }
 
-interface PostData {
-  type?: "video";
-  action?: "edit";
-  legenda: string;
-  cta: string;
-  hashtags: string[];
-  imagePrompt: string;
-  headline?: string;
-  subtitle?: string;
-  slides?: { text: string; imagePrompt: string }[];
-  logo?: { x: number; y: number; width: number };
-  textStyles?: {
-    headline?: Partial<ActiveTextProps>;
-    subtitle?: Partial<ActiveTextProps>;
-    cta?: Partial<ActiveTextProps>;
-  };
-}
 
 async function parsePostData(text: string): Promise<PostData | null> {
   const match = text.match(/<post-data>\s*([\s\S]*?)\s*<\/post-data>/);
@@ -246,9 +230,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         const slides = isCarousel ? data.slides! : [];
 
         const fullCaption = [
-          data.legenda,
+          data.legenda ?? "",
           "",
-          data.cta,
+          data.cta ?? "",
           "",
           data.hashtags.map((h) => `#${h}`).join(" "),
         ].join("\n");
@@ -308,7 +292,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             newNodes.push({
               id: slideId,
               type: "image" as const,
-              data: { instructions: slides[i].imagePrompt },
+              data: { instructions: slides[i].imagePrompt ?? "" },
               position: { x: 600, y: 50 + i * 300 },
               origin: [0, 0.5] as [number, number],
             });
@@ -326,7 +310,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             id: legendaId,
             type: "text" as const,
             data: {
-              text: `${data.legenda}\n\n${data.cta}\n\n${data.hashtags.map((h) => `#${h}`).join(" ")}`,
+              text: `${data.legenda ?? ""}\n\n${data.cta ?? ""}\n\n${data.hashtags.map((h) => `#${h}`).join(" ")}`,
               content: {
                 type: "doc",
                 content: [
@@ -359,7 +343,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
               const refs = referenceImagesRef.current;
               const result = await generateImageAction({
-                prompt: slides[i].imagePrompt,
+                prompt: slides[i].imagePrompt ?? "",
                 modelId: "gemini",
                 referenceImages: refs.length > 0 ? refs : undefined,
               });
@@ -457,7 +441,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             id: legendaId,
             type: "text" as const,
             data: {
-              text: `${data.legenda}\n\n${data.cta}\n\n${data.hashtags.map((h) => `#${h}`).join(" ")}`,
+              text: `${data.legenda ?? ""}\n\n${data.cta ?? ""}\n\n${data.hashtags.map((h) => `#${h}`).join(" ")}`,
               content: {
                 type: "doc",
                 content: [
