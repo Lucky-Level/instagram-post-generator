@@ -7,6 +7,8 @@ interface ComposePostRequest {
   logoUrl?: string; // URL da logo (opcional)
   logoPosition?: { x: number; y: number; width: number };
   productLayerUrl?: string; // PNG transparente do produto recortado (opcional)
+  width?: number;  // dimensão do canvas (default 1080)
+  height?: number; // dimensão do canvas (default 1080)
 }
 
 async function urlToBuffer(url: string): Promise<Buffer> {
@@ -28,7 +30,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "backgroundUrl required" }, { status: 400 });
     }
 
-    const CANVAS = 1080;
+    const W = body.width ?? 1080;
+    const H = body.height ?? 1080;
 
     const bgBuffer = await urlToBuffer(backgroundUrl);
 
@@ -38,15 +41,15 @@ export async function POST(req: Request) {
     // 1b. Product layer (transparent PNG cutout) — below typography
     if (productLayerUrl) {
       const productBuffer = await urlToBuffer(productLayerUrl);
-      const PRODUCT_W = Math.round(CANVAS * 0.65);
+      const PRODUCT_W = Math.round(W * 0.65);
       const resizedProduct = await sharp(productBuffer)
-        .resize(PRODUCT_W, Math.round(CANVAS * 0.75), { fit: "inside", withoutEnlargement: false })
+        .resize(PRODUCT_W, Math.round(H * 0.75), { fit: "inside", withoutEnlargement: false })
         .toBuffer();
       const productMeta = await sharp(resizedProduct).metadata();
       const pw = productMeta.width ?? PRODUCT_W;
-      const ph = productMeta.height ?? Math.round(CANVAS * 0.75);
-      const left = Math.round((CANVAS - pw) / 2);
-      const top = Math.round((CANVAS - ph) / 2);
+      const ph = productMeta.height ?? Math.round(H * 0.75);
+      const left = Math.round((W - pw) / 2);
+      const top = Math.round((H - ph) / 2);
       layers.push({ input: resizedProduct, top, left });
     }
 
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
     if (typographyPng) {
       const typoBuffer = await urlToBuffer(typographyPng);
       const resizedTypo = await sharp(typoBuffer)
-        .resize(CANVAS, CANVAS, { fit: "fill" })
+        .resize(W, H, { fit: "fill" })
         .toBuffer();
       layers.push({ input: resizedTypo, top: 0, left: 0 });
     }
@@ -77,7 +80,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Composite all layers (skip composite call when layers is empty)
-    const pipeline = sharp(bgBuffer).resize(CANVAS, CANVAS, { fit: "cover", position: "center" });
+    const pipeline = sharp(bgBuffer).resize(W, H, { fit: "cover", position: "center" });
     const outputBuffer = await (layers.length > 0 ? pipeline.composite(layers) : pipeline)
       .png({ compressionLevel: 6 })
       .toBuffer();
@@ -86,8 +89,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       url: `data:image/png;base64,${base64}`,
-      width: CANVAS,
-      height: CANVAS,
+      width: W,
+      height: H,
     });
   } catch (error) {
     console.error("[compose-post]", error);
