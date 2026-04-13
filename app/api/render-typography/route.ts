@@ -43,6 +43,11 @@ function buildShadowFilter(id: string, style: TextStyle): string {
   return `<filter id="${id}"><feDropShadow dx="${dx}" dy="${dy}" stdDeviation="${blur / 2}" flood-color="${color}" /></filter>`;
 }
 
+function toSatoriWeight(w: number): 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 {
+  const rounded = Math.round(w / 100) * 100;
+  return Math.min(900, Math.max(100, rounded)) as 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+}
+
 export async function POST(req: Request) {
   try {
     const body: RenderTypographyRequest = await req.json();
@@ -61,12 +66,24 @@ export async function POST(req: Request) {
       if (style?.fontFamily) fontFamilies.add(style.fontFamily);
     }
 
-    const fonts: SatoriFont[] = [];
-    for (const family of fontFamilies) {
-      const buffer = await loadGoogleFontBuffer(family, 400);
-      if (buffer) fonts.push({ name: family, data: buffer, weight: 400, style: "normal" });
-      const boldBuffer = await loadGoogleFontBuffer(family, 700);
-      if (boldBuffer) fonts.push({ name: family, data: boldBuffer, weight: 700, style: "normal" });
+    // Fix 4: Parallel font loading with guard
+    const fontLoadResults = await Promise.all(
+      [...fontFamilies].flatMap((family) => [
+        loadGoogleFontBuffer(family, 400).then((buf) =>
+          buf ? { name: family, data: buf, weight: 400 as const, style: "normal" as const } : null
+        ),
+        loadGoogleFontBuffer(family, 700).then((buf) =>
+          buf ? { name: family, data: buf, weight: 700 as const, style: "normal" as const } : null
+        ),
+      ])
+    );
+
+    const fonts: SatoriFont[] = fontLoadResults.filter(
+      (f): f is NonNullable<typeof f> => f !== null
+    );
+
+    if (fonts.length === 0) {
+      return NextResponse.json({ error: "Font loading failed" }, { status: 503 });
     }
 
     // Build SVG filters for shadows
@@ -83,7 +100,14 @@ export async function POST(req: Request) {
       const style = textStyles?.[layer.key] ?? {};
       const fontFamily = style.fontFamily ?? "Inter";
       const fontSize = style.fontSize ?? layer.defaultSize;
-      const fontWeight = style.fontWeight ?? (layer.bold ? "bold" : "normal");
+
+      // Fix 3: fontWeight coercion — schema is string, Satori needs number
+      const parsedWeight = parseInt(style.fontWeight ?? "", 10);
+      const fontWeightNum: 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 =
+        !isNaN(parsedWeight)
+          ? toSatoriWeight(parsedWeight)
+          : layer.bold ? 700 : 400;
+
       const fill = style.fill ?? "#ffffff";
       const strokeWidth = style.strokeWidth ?? 0;
       const stroke = style.stroke ?? "transparent";
@@ -102,7 +126,7 @@ export async function POST(req: Request) {
         style: {
           fontFamily,
           fontSize,
-          fontWeight: fontWeight as "normal" | "bold",
+          fontWeight: fontWeightNum,
           fill,
           strokeWidth,
           stroke,
@@ -110,6 +134,8 @@ export async function POST(req: Request) {
           opacity,
           textAlign,
           hasShadow,
+          // Fix 2: lineHeight from TextStyle instead of hardcoded 1.2
+          lineHeight: style.lineHeight ?? 1.2,
         },
       };
     });
@@ -161,8 +187,9 @@ export async function POST(req: Request) {
                         : undefined,
                     letterSpacing: el.style.charSpacing ? `${el.style.charSpacing / 100}em` : undefined,
                     textAlign: el.style.textAlign,
-                    lineHeight: 1.2,
-                    textShadow: el.style.hasShadow ? "inherit" : undefined,
+                    // Fix 2: use lineHeight from style
+                    lineHeight: el.style.lineHeight,
+                    // Fix 5: removed textShadow: "inherit" — Satori doesn't support it
                   },
                   children: el.text,
                 },
@@ -178,10 +205,15 @@ export async function POST(req: Request) {
       },
     );
 
-    // Inject shadow filters into SVG defs
-    const svgWithFilters = svg
-      .replace("<svg", `<svg xmlns="http://www.w3.org/2000/svg"`)
-      .replace("</svg>", `<defs>${filters}</defs></svg>`);
+    // Fix 1: Inject defs right after opening <svg ...> tag closes, guard against double xmlns
+    const svgBase = svg.includes("xmlns=")
+      ? svg
+      : svg.replace("<svg", `<svg xmlns="http://www.w3.org/2000/svg"`);
+
+    const firstClose = svgBase.indexOf(">") + 1;
+    const svgWithFilters = filters
+      ? svgBase.slice(0, firstClose) + `<defs>${filters}</defs>` + svgBase.slice(firstClose)
+      : svgBase;
 
     // Convert SVG → PNG via resvg
     const resvg = new Resvg(svgWithFilters, {
