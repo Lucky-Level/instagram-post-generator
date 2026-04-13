@@ -6,6 +6,7 @@ interface ComposePostRequest {
   typographyPng?: string; // data URL PNG da camada de tipografia (opcional)
   logoUrl?: string; // URL da logo (opcional)
   logoPosition?: { x: number; y: number; width: number };
+  productLayerUrl?: string; // PNG transparente do produto recortado (opcional)
 }
 
 async function urlToBuffer(url: string): Promise<Buffer> {
@@ -21,7 +22,7 @@ async function urlToBuffer(url: string): Promise<Buffer> {
 export async function POST(req: Request) {
   try {
     const body: ComposePostRequest = await req.json();
-    const { backgroundUrl, typographyPng, logoUrl, logoPosition } = body;
+    const { backgroundUrl, typographyPng, logoUrl, logoPosition, productLayerUrl } = body;
 
     if (!backgroundUrl) {
       return NextResponse.json({ error: "backgroundUrl required" }, { status: 400 });
@@ -33,6 +34,21 @@ export async function POST(req: Request) {
 
     // Collect composite layers
     const layers: sharp.OverlayOptions[] = [];
+
+    // 1b. Product layer (transparent PNG cutout) — below typography
+    if (productLayerUrl) {
+      const productBuffer = await urlToBuffer(productLayerUrl);
+      const PRODUCT_W = Math.round(CANVAS * 0.65);
+      const resizedProduct = await sharp(productBuffer)
+        .resize(PRODUCT_W, Math.round(CANVAS * 0.75), { fit: "inside", withoutEnlargement: false })
+        .toBuffer();
+      const productMeta = await sharp(resizedProduct).metadata();
+      const pw = productMeta.width ?? PRODUCT_W;
+      const ph = productMeta.height ?? Math.round(CANVAS * 0.75);
+      const left = Math.round((CANVAS - pw) / 2);
+      const top = Math.round((CANVAS - ph) / 2);
+      layers.push({ input: resizedProduct, top, left });
+    }
 
     // 2. Typography layer (PNG transparente)
     if (typographyPng) {
