@@ -47,6 +47,28 @@ export interface PostEditorHandle {
       cta?: Partial<ActiveTextProps>;
     };
   }) => Promise<void>;
+  setBackground: (imageUrl: string) => Promise<void>;
+  addShape: (
+    type: "rect" | "circle" | "line" | "triangle",
+    options?: { fill?: string; width?: number; height?: number },
+  ) => Promise<void>;
+  addImage: (imageUrl: string) => Promise<void>;
+  getObjects: () => {
+    index: number;
+    type: string;
+    text?: string;
+    visible: boolean;
+    locked: boolean;
+    isLogo: boolean;
+  }[];
+  setObjectVisibility: (index: number, visible: boolean) => void;
+  setObjectLocked: (index: number, locked: boolean) => void;
+  reorderObject: (fromIndex: number, toIndex: number) => void;
+  updateTextByKey: (
+    key: "headline" | "subtitle" | "cta",
+    text: string,
+    styles?: Partial<ActiveTextProps>,
+  ) => void;
 }
 
 interface PostEditorProps {
@@ -381,6 +403,140 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
           }
 
           // Sempre renderizar, mesmo sem logo
+          canvas.renderAll();
+        },
+
+        setBackground: async (imageUrl: string) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const fabric = await import("fabric");
+          const img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: "anonymous" });
+          const scaleX = CANVAS_SIZE / (img.width || 1);
+          const scaleY = CANVAS_SIZE / (img.height || 1);
+          const imgScale = Math.max(scaleX, scaleY);
+          img.scaleX = imgScale;
+          img.scaleY = imgScale;
+          img.originX = "center";
+          img.originY = "center";
+          img.left = CANVAS_SIZE / 2;
+          img.top = CANVAS_SIZE / 2;
+          canvas.backgroundImage = img;
+          canvas.renderAll();
+        },
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        addShape: async (type: "rect" | "circle" | "line" | "triangle", options?: { fill?: string; width?: number; height?: number }) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const fabric = await import("fabric");
+          const fill = options?.fill ?? "#ffffff";
+          const w = options?.width ?? 200;
+          const h = options?.height ?? 200;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let shape: any;
+          switch (type) {
+            case "rect":
+              shape = new fabric.Rect({ width: w, height: h, fill, rx: 8, ry: 8 });
+              break;
+            case "circle":
+              shape = new fabric.Circle({ radius: w / 2, fill });
+              break;
+            case "triangle":
+              shape = new fabric.Triangle({ width: w, height: h, fill });
+              break;
+            case "line":
+              shape = new fabric.Line([0, 0, w, 0], { stroke: fill, strokeWidth: 3 });
+              break;
+          }
+          if (shape) {
+            shape.set({ left: CANVAS_SIZE / 2, top: CANVAS_SIZE / 2, originX: "center", originY: "center" });
+            canvas.add(shape);
+            canvas.setActiveObject(shape);
+            canvas.renderAll();
+          }
+        },
+
+        addImage: async (imageUrl: string) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const fabric = await import("fabric");
+          const img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: "anonymous" });
+          const maxDim = 400;
+          const scale = maxDim / Math.max(img.width || 1, img.height || 1);
+          img.scaleX = scale;
+          img.scaleY = scale;
+          img.set({ left: CANVAS_SIZE / 2, top: CANVAS_SIZE / 2, originX: "center", originY: "center" });
+          canvas.add(img);
+          canvas.setActiveObject(img);
+          canvas.renderAll();
+        },
+
+        getObjects: () => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return [];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return canvas.getObjects().map((obj: any, i: number) => ({
+            index: i,
+            type: obj.type as string,
+            text: obj.type === "textbox" ? (obj.text as string)?.substring(0, 30) : undefined,
+            visible: obj.visible !== false,
+            locked: obj.selectable === false,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            isLogo: !!(obj as any)._isLogo,
+          }));
+        },
+
+        setObjectVisibility: (index: number, visible: boolean) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const objects = canvas.getObjects();
+          if (objects[index]) {
+            objects[index].set("visible", visible);
+            canvas.renderAll();
+          }
+        },
+
+        setObjectLocked: (index: number, locked: boolean) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const objects = canvas.getObjects();
+          if (objects[index]) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            objects[index].set({ selectable: !locked, evented: !locked } as any);
+            canvas.renderAll();
+          }
+        },
+
+        reorderObject: (fromIndex: number, toIndex: number) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const objects = canvas.getObjects();
+          const obj = objects[fromIndex];
+          if (!obj) return;
+          canvas.remove(obj);
+          const remaining = canvas.getObjects();
+          const clampedTo = Math.min(toIndex, remaining.length);
+          canvas.add(obj);
+          canvas.moveTo(obj, clampedTo);
+          canvas.renderAll();
+        },
+
+        updateTextByKey: (key: "headline" | "subtitle" | "cta", text: string, styles?: Partial<ActiveTextProps>) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const textboxes = canvas.getObjects("textbox");
+          const idx = key === "headline" ? 0 : key === "subtitle" ? 1 : 2;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const target = textboxes[idx] as any;
+          if (!target) return;
+          target.set("text", text);
+          if (styles) {
+            const directProps = ["fontFamily", "fontSize", "fill", "fontWeight", "fontStyle", "textAlign", "strokeWidth", "stroke", "charSpacing", "lineHeight", "opacity"] as const;
+            for (const k of directProps) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((styles as any)[k] !== undefined) target.set(k, (styles as any)[k]);
+            }
+          }
           canvas.renderAll();
         },
       }),
