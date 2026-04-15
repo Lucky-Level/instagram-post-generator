@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
-import { editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
+import { editorOpenAtom } from "@/lib/editor-state";
 import { Canvas } from "@/components/canvas";
 import { ChatPanel } from "@/components/chat-panel";
 import { Controls } from "@/components/controls";
@@ -30,8 +30,7 @@ interface AgentInfo {
 
 const Index = () => {
   const [view, setView] = useState<ViewMode>("app");
-  const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
-  const [, setEditorSession] = useAtom(editorSessionAtom);
+  const [editorOpen] = useAtom(editorOpenAtom);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -199,26 +198,6 @@ const Index = () => {
                 Studio
               </button>
             </div>
-
-            {view === "studio" && !editorOpen && (
-              <button
-                onClick={() => {
-                  setEditorSession({
-                    imageUrl: "https://placehold.co/1080x1080/1a1a2e/ffffff?text=Test+Canvas",
-                    canvasWidth: 1080,
-                    canvasHeight: 1080,
-                    format: "instagram-feed-square",
-                    headline: "Titulo Teste",
-                    subtitle: "Subtitulo aqui",
-                    cta: "Saiba Mais",
-                  });
-                  setEditorOpen(true);
-                }}
-                className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                Test Editor
-              </button>
-            )}
 
             <div className="flex items-center gap-1">
               <button className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden sm:flex">
