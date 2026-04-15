@@ -2,7 +2,6 @@ import { getIncomers, useReactFlow } from "@xyflow/react";
 import {
   DownloadIcon,
   Loader2Icon,
-  PencilIcon,
   SparklesIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -18,7 +17,6 @@ import { download } from "@/lib/download";
 import { handleError } from "@/lib/error/handle";
 import { getImagesFromImageNodes, getTextFromTextNodes } from "@/lib/xyflow";
 import { useGateway } from "@/providers/gateway/client";
-import { PostEditorModal } from "@/components/post-editor-modal";
 import { ModelSelector } from "../model-selector";
 import type { ImageNodeProps } from ".";
 
@@ -54,7 +52,6 @@ export const ImageTransform = ({
 }: ImageTransformProps) => {
   const { updateNodeData, getNodes, getEdges } = useReactFlow();
   const [loading, setLoading] = useState(false);
-  const [editorOpen, setEditorOpen] = useState(false);
   const { imageModels } = useGateway();
   const modelId = data.model ?? getDefaultModel(imageModels);
   const analytics = useAnalytics();
@@ -177,14 +174,6 @@ export const ImageTransform = ({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setEditorOpen(true)}
-              title="Edit with text editor"
-            >
-              <PencilIcon size={12} />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
               onClick={() => download(data.generated, id, "png")}
             >
               <DownloadIcon size={12} />
@@ -229,22 +218,6 @@ export const ImageTransform = ({
         />
       )}
     </NodeLayout>
-      {data.generated?.url && (
-        <PostEditorModal
-          imageUrl={data.generated.url}
-          open={editorOpen}
-          onClose={() => setEditorOpen(false)}
-          onSave={(dataUrl) => {
-            updateNodeData(id, {
-              updatedAt: new Date().toISOString(),
-              generated: {
-                url: dataUrl,
-                type: "image/png",
-              },
-            });
-          }}
-        />
-      )}
     </>
   );
 };

@@ -193,62 +193,6 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     setEditorOpen(true);
   }, [setEditorSession, setEditorOpen]);
 
-  const composeCreative = useCallback(async (params: {
-    backgroundUrl: string;
-    headline?: string;
-    subtitle?: string;
-    cta?: string;
-    textStyles?: GeneratedImage["textStyles"];
-    logo?: { x: number; y: number; width: number };
-    logoUrl?: string;
-    width?: number;
-    height?: number;
-  }): Promise<string> => {
-    const { backgroundUrl, headline, subtitle, cta, textStyles, logo, logoUrl, width, height } = params;
-
-    // 1. Renderizar tipografia via Satori
-    let typographyPng: string | undefined;
-    if (headline || subtitle || cta) {
-      try {
-        const typoRes = await fetch("/api/render-typography", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ headline, subtitle, cta, textStyles, width, height }),
-        });
-        if (typoRes.ok) {
-          const typoData = await typoRes.json();
-          typographyPng = typoData.png;
-        }
-      } catch {
-        // Tipografia falhou — continua sem ela
-      }
-    }
-
-    // 2. Composite via Sharp
-    try {
-      const composeRes = await fetch("/api/compose-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          backgroundUrl,
-          typographyPng,
-          logoUrl,
-          logoPosition: logo,
-          width,
-          height,
-        }),
-      });
-      if (composeRes.ok) {
-        const composeData = await composeRes.json();
-        return composeData.url;
-      }
-    } catch {
-      // Composite falhou — retorna background original
-    }
-
-    return backgroundUrl;
-  }, []);
-
   const handleAiEdit = useCallback(async (msgId: string, idx: number, currentUrl: string) => {
     if (!aiEditState || aiEditState.loading) return;
     const prompt = aiEditState.prompt.trim();
@@ -344,26 +288,44 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
     setProductAdState({ status: "composing", error: null });
 
-    // 4. Compositar: cena + produto recortado
+    // 4. Compositar: cena + produto recortado (client-side canvas)
     toast.info("Compondo criativo final...");
     try {
-      const composeRes = await fetch("/api/compose-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          backgroundUrl: sceneResult.url,
-          productLayerUrl: cutoutUrl,
-        }),
-      });
+      const SIZE = 1080;
+      const loadImg = (src: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+          const img = new window.Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = src;
+        });
 
-      if (!composeRes.ok) throw new Error("Falha ao compositar");
+      const [bgImg, productImg] = await Promise.all([
+        loadImg(sceneResult.url),
+        loadImg(cutoutUrl),
+      ]);
 
-      const composeData = await composeRes.json();
-      setProductAdImages((prev) => [...prev, { url: composeData.url, description: `Anúncio: ${description}` }]);
-      toast.success("Anúncio criado!");
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context unavailable");
+
+      // Draw background (cover)
+      ctx.drawImage(bgImg, 0, 0, SIZE, SIZE);
+      // Draw product cutout centered
+      const scale = Math.min(SIZE / productImg.width, SIZE / productImg.height) * 0.6;
+      const pw = productImg.width * scale;
+      const ph = productImg.height * scale;
+      ctx.drawImage(productImg, (SIZE - pw) / 2, (SIZE - ph) / 2, pw, ph);
+
+      const compositeUrl = canvas.toDataURL("image/png");
+      setProductAdImages((prev) => [...prev, { url: compositeUrl, description: `Anuncio: ${description}` }]);
+      toast.success("Anuncio criado!");
     } catch {
       setProductAdState({ status: "error", error: "Falha ao compositar" });
-      toast.error("Falha ao compositar o anúncio");
+      toast.error("Falha ao compositar o anuncio");
       return;
     }
 
