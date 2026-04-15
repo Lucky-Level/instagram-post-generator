@@ -37,3 +37,6 @@ export type EditorTab =
   | "brand"
   | "layers";
 export const editorTabAtom = atom<EditorTab>("templates");
+
+// Active agent ID so BrandTab can fetch brand data
+export const editorAgentIdAtom = atom<string | null>(null);

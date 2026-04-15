@@ -1,9 +1,9 @@
 "use client";
 
 import { useAtom } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DownloadIcon, ArrowLeftIcon } from "lucide-react";
-import { editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
+import { editorAgentIdAtom, editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
 import { EditorSidebar } from "./editor-sidebar";
 import { PostEditor, type ActiveTextProps, type PostEditorHandle } from "./post-editor";
 import { PostEditorToolbar } from "./post-editor-toolbar";
@@ -18,6 +18,11 @@ export function EditorView({ agentId }: EditorViewProps) {
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
   const [, setEditorHandle] = useAtom(editorHandleAtom);
+  const [, setAgentId] = useAtom(editorAgentIdAtom);
+
+  useEffect(() => {
+    setAgentId(agentId ?? null);
+  }, [agentId, setAgentId]);
 
   const handleClose = useCallback(() => {
     setEditorOpen(false);
