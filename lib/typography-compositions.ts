@@ -42,7 +42,6 @@ export interface TypographyComposition {
         offsetY: number;
       };
       fontStyle?: "normal" | "italic";
-      textTransform?: "uppercase" | "none";
     };
   }>;
   overlays?: Array<{
@@ -61,8 +60,8 @@ const modern: TypographyComposition[] = [
     name: "Moderno Centralizado",
     category: "modern",
     previewText: {
-      headline: "SEU TITULO AQUI",
-      subtitle: "Subtitulo descritivo do seu post",
+      headline: "SEU TÍTULO AQUI",
+      subtitle: "Subtítulo descritivo do seu post",
       cta: "SAIBA MAIS",
     },
     layers: [
@@ -70,7 +69,7 @@ const modern: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "SEU TITULO AQUI",
+          text: "SEU TÍTULO AQUI",
           left: 540,
           top: 400,
           originX: "center",
@@ -84,14 +83,13 @@ const modern: TypographyComposition[] = [
           charSpacing: -20,
           lineHeight: 1.1,
           shadow: { color: "rgba(0,0,0,0.6)", blur: 12, offsetX: 0, offsetY: 4 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Subtitulo descritivo do seu post",
+          text: "Subtítulo descritivo do seu post",
           left: 540,
           top: 520,
           originX: "center",
@@ -124,7 +122,6 @@ const modern: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 300,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -157,7 +154,6 @@ const modern: TypographyComposition[] = [
           charSpacing: -30,
           lineHeight: 1.05,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 14, offsetX: 0, offsetY: 4 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -197,7 +193,6 @@ const modern: TypographyComposition[] = [
           textAlign: "left",
           charSpacing: 400,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -207,8 +202,8 @@ const modern: TypographyComposition[] = [
     name: "Moderno Base Forte",
     category: "modern",
     previewText: {
-      headline: "NOVA COLECAO",
-      subtitle: "Descubra o que preparamos para voce",
+      headline: "NOVA COLEÇÃO",
+      subtitle: "Descubra o que preparamos para você",
       cta: "VER AGORA",
     },
     layers: [
@@ -216,7 +211,7 @@ const modern: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "NOVA COLECAO",
+          text: "NOVA COLEÇÃO",
           left: 540,
           top: 750,
           originX: "center",
@@ -230,14 +225,13 @@ const modern: TypographyComposition[] = [
           charSpacing: -10,
           lineHeight: 1.0,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 16, offsetX: 0, offsetY: 4 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Descubra o que preparamos para voce",
+          text: "Descubra o que preparamos para você",
           left: 540,
           top: 860,
           originX: "center",
@@ -270,7 +264,6 @@ const modern: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 350,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -283,6 +276,7 @@ const modern: TypographyComposition[] = [
           width: 1080,
           height: 400,
           fill: "rgba(0,0,0,0.45)",
+          selectable: false,
         },
       },
     ],
@@ -293,7 +287,7 @@ const modern: TypographyComposition[] = [
     category: "modern",
     previewText: {
       headline: "TRANSFORME SUAS IDEIAS",
-      subtitle: "Do conceito a realidade",
+      subtitle: "Do conceito à realidade",
     },
     layers: [
       {
@@ -314,14 +308,13 @@ const modern: TypographyComposition[] = [
           charSpacing: -20,
           lineHeight: 1.05,
           shadow: { color: "rgba(0,0,0,0.65)", blur: 14, offsetX: 0, offsetY: 4 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Do conceito a realidade",
+          text: "Do conceito à realidade",
           left: 80,
           top: 850,
           originX: "left",
@@ -345,7 +338,7 @@ const modern: TypographyComposition[] = [
     category: "modern",
     previewText: {
       headline: "MENOS E MAIS",
-      subtitle: "A simplicidade como estrategia",
+      subtitle: "A simplicidade como estratégia",
       cta: "DESCUBRA",
     },
     layers: [
@@ -367,14 +360,13 @@ const modern: TypographyComposition[] = [
           charSpacing: -40,
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.6)", blur: 12, offsetX: 0, offsetY: 4 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "A simplicidade como estrategia",
+          text: "A simplicidade como estratégia",
           left: 540,
           top: 560,
           originX: "center",
@@ -407,7 +399,6 @@ const modern: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 500,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -425,7 +416,7 @@ const elegant: TypographyComposition[] = [
     category: "elegant",
     previewText: {
       headline: "Arte & Estilo",
-      subtitle: "Uma experiencia visual unica",
+      subtitle: "Uma experiência visual única",
       cta: "EXPLORAR",
     },
     layers: [
@@ -453,7 +444,7 @@ const elegant: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Uma experiencia visual unica",
+          text: "Uma experiência visual única",
           left: 540,
           top: 540,
           originX: "center",
@@ -488,7 +479,6 @@ const elegant: TypographyComposition[] = [
           charSpacing: 600,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -499,7 +489,7 @@ const elegant: TypographyComposition[] = [
     category: "elegant",
     previewText: {
       headline: "Beleza Natural",
-      subtitle: "Descubra a essencia da sofisticacao",
+      subtitle: "Descubra a essência da sofisticação",
     },
     layers: [
       {
@@ -525,7 +515,7 @@ const elegant: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Descubra a essencia da sofisticacao",
+          text: "Descubra a essência da sofisticação",
           left: 100,
           top: 580,
           originX: "left",
@@ -550,7 +540,7 @@ const elegant: TypographyComposition[] = [
     category: "elegant",
     previewText: {
       headline: "Momentos Especiais",
-      subtitle: "Cada detalhe conta uma historia",
+      subtitle: "Cada detalhe conta uma história",
       cta: "VEJA MAIS",
     },
     layers: [
@@ -578,7 +568,7 @@ const elegant: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Cada detalhe conta uma historia",
+          text: "Cada detalhe conta uma história",
           left: 540,
           top: 830,
           originX: "center",
@@ -612,7 +602,6 @@ const elegant: TypographyComposition[] = [
           charSpacing: 500,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -625,6 +614,7 @@ const elegant: TypographyComposition[] = [
           width: 1080,
           height: 440,
           fill: "rgba(0,0,0,0.4)",
+          selectable: false,
         },
       },
     ],
@@ -634,7 +624,7 @@ const elegant: TypographyComposition[] = [
     name: "Elegante DM Serif",
     category: "elegant",
     previewText: {
-      headline: "Tradicao & Inovacao",
+      headline: "Tradição & Inovação",
       subtitle: "O melhor dos dois mundos",
     },
     layers: [
@@ -642,7 +632,7 @@ const elegant: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "Tradicao & Inovacao",
+          text: "Tradição & Inovação",
           left: 540,
           top: 440,
           originX: "center",
@@ -676,7 +666,6 @@ const elegant: TypographyComposition[] = [
           lineHeight: 1.5,
           opacity: 0.75,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -686,16 +675,16 @@ const elegant: TypographyComposition[] = [
     name: "Elegante EB Garamond",
     category: "elegant",
     previewText: {
-      headline: "Exclusividade em Cada Peca",
+      headline: "Exclusividade em Cada Peça",
       subtitle: "Feito para quem valoriza qualidade",
-      cta: "CONHECA",
+      cta: "CONHEÇA",
     },
     layers: [
       {
         role: "headline",
         type: "textbox",
         props: {
-          text: "Exclusividade em Cada Peca",
+          text: "Exclusividade em Cada Peça",
           left: 100,
           top: 250,
           originX: "left",
@@ -734,7 +723,7 @@ const elegant: TypographyComposition[] = [
         role: "cta",
         type: "textbox",
         props: {
-          text: "CONHECA",
+          text: "CONHEÇA",
           left: 100,
           top: 900,
           originX: "left",
@@ -748,7 +737,6 @@ const elegant: TypographyComposition[] = [
           charSpacing: 500,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -766,7 +754,7 @@ const bold: TypographyComposition[] = [
     category: "bold",
     previewText: {
       headline: "HORA DE AGIR",
-      subtitle: "Nao espere mais",
+      subtitle: "Não espere mais",
       cta: "COMECE AGORA",
     },
     layers: [
@@ -788,14 +776,13 @@ const bold: TypographyComposition[] = [
           charSpacing: 50,
           lineHeight: 0.9,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 16, offsetX: 0, offsetY: 6 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Nao espere mais",
+          text: "Não espere mais",
           left: 540,
           top: 560,
           originX: "center",
@@ -828,7 +815,6 @@ const bold: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 200,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -838,7 +824,7 @@ const bold: TypographyComposition[] = [
     name: "Impacto Oswald Esquerda",
     category: "bold",
     previewText: {
-      headline: "FORCA TOTAL",
+      headline: "FORÇA TOTAL",
       subtitle: "Supere seus limites hoje",
     },
     layers: [
@@ -846,7 +832,7 @@ const bold: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "FORCA TOTAL",
+          text: "FORÇA TOTAL",
           left: 80,
           top: 420,
           originX: "left",
@@ -859,7 +845,6 @@ const bold: TypographyComposition[] = [
           textAlign: "left",
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 14, offsetX: 0, offsetY: 5 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -912,7 +897,6 @@ const bold: TypographyComposition[] = [
           shadow: { color: "rgba(0,0,0,0.8)", blur: 20, offsetX: 0, offsetY: 6 },
           stroke: "rgba(0,0,0,0.3)",
           strokeWidth: 2,
-          textTransform: "uppercase",
         },
       },
       {
@@ -932,7 +916,6 @@ const bold: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 400,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -942,16 +925,16 @@ const bold: TypographyComposition[] = [
     name: "Impacto Archivo Diagonal",
     category: "bold",
     previewText: {
-      headline: "POTENCIA MAXIMA",
+      headline: "POTÊNCIA MÁXIMA",
       subtitle: "Resultados que impressionam",
-      cta: "COMECE JA",
+      cta: "COMECE JÁ",
     },
     layers: [
       {
         role: "headline",
         type: "textbox",
         props: {
-          text: "POTENCIA MAXIMA",
+          text: "POTÊNCIA MÁXIMA",
           left: 80,
           top: 300,
           originX: "left",
@@ -964,7 +947,6 @@ const bold: TypographyComposition[] = [
           textAlign: "left",
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 16, offsetX: 0, offsetY: 5 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -991,7 +973,7 @@ const bold: TypographyComposition[] = [
         role: "cta",
         type: "textbox",
         props: {
-          text: "COMECE JA",
+          text: "COMECE JÁ",
           left: 80,
           top: 780,
           originX: "left",
@@ -1004,7 +986,6 @@ const bold: TypographyComposition[] = [
           textAlign: "left",
           charSpacing: 250,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1035,7 +1016,6 @@ const bold: TypographyComposition[] = [
           textAlign: "center",
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.75)", blur: 18, offsetX: 0, offsetY: 6 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1073,7 +1053,7 @@ const playful: TypographyComposition[] = [
     category: "playful",
     previewText: {
       headline: "Vamos Criar Juntos!",
-      subtitle: "Diversao garantida para todos",
+      subtitle: "Diversão garantida para todos",
       cta: "PARTICIPE",
     },
     layers: [
@@ -1100,7 +1080,7 @@ const playful: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Diversao garantida para todos",
+          text: "Diversão garantida para todos",
           left: 540,
           top: 520,
           originX: "center",
@@ -1133,7 +1113,6 @@ const playful: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 200,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1194,7 +1173,7 @@ const playful: TypographyComposition[] = [
     category: "playful",
     previewText: {
       headline: "Sorria Mais!",
-      subtitle: "A vida e feita de momentos felizes",
+      subtitle: "A vida é feita de momentos felizes",
       cta: "CURTA AGORA",
     },
     layers: [
@@ -1221,7 +1200,7 @@ const playful: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "A vida e feita de momentos felizes",
+          text: "A vida é feita de momentos felizes",
           left: 540,
           top: 510,
           originX: "center",
@@ -1254,7 +1233,6 @@ const playful: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 200,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1265,7 +1243,7 @@ const playful: TypographyComposition[] = [
     category: "playful",
     previewText: {
       headline: "Vem com a Gente!",
-      subtitle: "Uma jornada incrivel espera por voce",
+      subtitle: "Uma jornada incrível espera por você",
     },
     layers: [
       {
@@ -1291,7 +1269,7 @@ const playful: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Uma jornada incrivel espera por voce",
+          text: "Uma jornada incrível espera por você",
           left: 540,
           top: 860,
           originX: "center",
@@ -1317,6 +1295,7 @@ const playful: TypographyComposition[] = [
           width: 1080,
           height: 420,
           fill: "rgba(0,0,0,0.4)",
+          selectable: false,
         },
       },
     ],
@@ -1327,8 +1306,8 @@ const playful: TypographyComposition[] = [
     category: "playful",
     previewText: {
       headline: "Energia Pura",
-      subtitle: "Cada dia e uma nova oportunidade",
-      cta: "BORA LA",
+      subtitle: "Cada dia é uma nova oportunidade",
+      cta: "BORA LÁ",
     },
     layers: [
       {
@@ -1354,7 +1333,7 @@ const playful: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Cada dia e uma nova oportunidade",
+          text: "Cada dia é uma nova oportunidade",
           left: 540,
           top: 750,
           originX: "center",
@@ -1374,7 +1353,7 @@ const playful: TypographyComposition[] = [
         role: "cta",
         type: "textbox",
         props: {
-          text: "BORA LA",
+          text: "BORA LÁ",
           left: 540,
           top: 840,
           originX: "center",
@@ -1387,7 +1366,6 @@ const playful: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 200,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1405,7 +1383,7 @@ const minimal: TypographyComposition[] = [
     category: "minimal",
     previewText: {
       headline: "Simplicidade",
-      subtitle: "O essencial e invisivel aos olhos",
+      subtitle: "O essencial é invisível aos olhos",
     },
     layers: [
       {
@@ -1432,7 +1410,7 @@ const minimal: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "O essencial e invisivel aos olhos",
+          text: "O essencial é invisível aos olhos",
           left: 540,
           top: 580,
           originX: "center",
@@ -1456,7 +1434,7 @@ const minimal: TypographyComposition[] = [
     name: "Minimalista Raleway",
     category: "minimal",
     previewText: {
-      headline: "ESPACO",
+      headline: "ESPAÇO",
       subtitle: "Respire fundo e encontre clareza",
     },
     layers: [
@@ -1464,7 +1442,7 @@ const minimal: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "ESPACO",
+          text: "ESPAÇO",
           left: 100,
           top: 480,
           originX: "left",
@@ -1478,7 +1456,6 @@ const minimal: TypographyComposition[] = [
           charSpacing: 400,
           lineHeight: 1.2,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 8, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1530,7 +1507,6 @@ const minimal: TypographyComposition[] = [
           charSpacing: 600,
           lineHeight: 1.2,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 8, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1562,7 +1538,7 @@ const minimal: TypographyComposition[] = [
     category: "minimal",
     previewText: {
       headline: "Clareza",
-      subtitle: "Menos ruido, mais significado",
+      subtitle: "Menos ruído, mais significado",
       cta: "SAIBA MAIS",
     },
     layers: [
@@ -1590,7 +1566,7 @@ const minimal: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Menos ruido, mais significado",
+          text: "Menos ruído, mais significado",
           left: 540,
           top: 540,
           originX: "center",
@@ -1625,7 +1601,6 @@ const minimal: TypographyComposition[] = [
           charSpacing: 500,
           opacity: 0.5,
           shadow: { color: "rgba(0,0,0,0.2)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1635,7 +1610,7 @@ const minimal: TypographyComposition[] = [
     name: "Minimalista Montserrat",
     category: "minimal",
     previewText: {
-      headline: "EQUILIBRIO",
+      headline: "EQUILÍBRIO",
       subtitle: "Harmonia em cada detalhe",
     },
     layers: [
@@ -1643,7 +1618,7 @@ const minimal: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "EQUILIBRIO",
+          text: "EQUILÍBRIO",
           left: 540,
           top: 460,
           originX: "center",
@@ -1657,7 +1632,6 @@ const minimal: TypographyComposition[] = [
           charSpacing: 500,
           lineHeight: 1.2,
           shadow: { color: "rgba(0,0,0,0.35)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1696,7 +1670,7 @@ const editorial: TypographyComposition[] = [
     category: "editorial",
     previewText: {
       headline: "A Nova Era do Design",
-      subtitle: "Tendencias que vao transformar o mercado em 2026",
+      subtitle: "Tendências que vão transformar o mercado em 2026",
       cta: "LEIA MAIS",
     },
     layers: [
@@ -1704,7 +1678,7 @@ const editorial: TypographyComposition[] = [
         role: "decoration",
         type: "textbox",
         props: {
-          text: "TENDENCIA",
+          text: "TENDÊNCIA",
           left: 540,
           top: 280,
           originX: "center",
@@ -1718,7 +1692,6 @@ const editorial: TypographyComposition[] = [
           charSpacing: 800,
           opacity: 0.6,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1744,7 +1717,7 @@ const editorial: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Tendencias que vao transformar o mercado em 2026",
+          text: "Tendências que vão transformar o mercado em 2026",
           left: 540,
           top: 560,
           originX: "center",
@@ -1778,7 +1751,6 @@ const editorial: TypographyComposition[] = [
           charSpacing: 500,
           opacity: 0.65,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1789,7 +1761,7 @@ const editorial: TypographyComposition[] = [
     category: "editorial",
     previewText: {
       headline: "Entrevista Exclusiva",
-      subtitle: "Os segredos por tras do sucesso das grandes marcas",
+      subtitle: "Os segredos por trás do sucesso das grandes marcas",
     },
     layers: [
       {
@@ -1810,7 +1782,6 @@ const editorial: TypographyComposition[] = [
           charSpacing: 700,
           opacity: 0.6,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -1837,7 +1808,7 @@ const editorial: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Os segredos por tras do sucesso das grandes marcas",
+          text: "Os segredos por trás do sucesso das grandes marcas",
           left: 100,
           top: 590,
           originX: "left",
@@ -1861,7 +1832,7 @@ const editorial: TypographyComposition[] = [
     category: "editorial",
     previewText: {
       headline: "Cultura & Sociedade",
-      subtitle: "Um olhar critico sobre o mundo contemporaneo",
+      subtitle: "Um olhar crítico sobre o mundo contemporâneo",
       cta: "CONTINUE LENDO",
     },
     layers: [
@@ -1888,7 +1859,7 @@ const editorial: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Um olhar critico sobre o mundo contemporaneo",
+          text: "Um olhar crítico sobre o mundo contemporâneo",
           left: 540,
           top: 510,
           originX: "center",
@@ -1922,7 +1893,6 @@ const editorial: TypographyComposition[] = [
           charSpacing: 400,
           opacity: 0.65,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -1932,7 +1902,7 @@ const editorial: TypographyComposition[] = [
     name: "Editorial Capa",
     category: "editorial",
     previewText: {
-      headline: "O Futuro Comeca Aqui",
+      headline: "O Futuro Começa Aqui",
       subtitle: "Especial 2026",
     },
     layers: [
@@ -1940,7 +1910,7 @@ const editorial: TypographyComposition[] = [
         role: "decoration",
         type: "textbox",
         props: {
-          text: "EDICAO ESPECIAL",
+          text: "EDIÇÃO ESPECIAL",
           left: 540,
           top: 150,
           originX: "center",
@@ -1954,14 +1924,13 @@ const editorial: TypographyComposition[] = [
           charSpacing: 600,
           opacity: 0.6,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "headline",
         type: "textbox",
         props: {
-          text: "O Futuro Comeca Aqui",
+          text: "O Futuro Começa Aqui",
           left: 540,
           top: 540,
           originX: "center",
@@ -1995,7 +1964,6 @@ const editorial: TypographyComposition[] = [
           lineHeight: 1.5,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.4)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2005,8 +1973,8 @@ const editorial: TypographyComposition[] = [
     name: "Editorial Coluna Direita",
     category: "editorial",
     previewText: {
-      headline: "Perspectivas do Amanha",
-      subtitle: "Analise aprofundada sobre inovacao e tecnologia",
+      headline: "Perspectivas do Amanhã",
+      subtitle: "Análise aprofundada sobre inovação e tecnologia",
       cta: "ARTIGO COMPLETO",
     },
     layers: [
@@ -2014,7 +1982,7 @@ const editorial: TypographyComposition[] = [
         role: "headline",
         type: "textbox",
         props: {
-          text: "Perspectivas do Amanha",
+          text: "Perspectivas do Amanhã",
           left: 980,
           top: 400,
           originX: "right",
@@ -2033,7 +2001,7 @@ const editorial: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Analise aprofundada sobre inovacao e tecnologia",
+          text: "Análise aprofundada sobre inovação e tecnologia",
           left: 980,
           top: 570,
           originX: "right",
@@ -2067,7 +2035,6 @@ const editorial: TypographyComposition[] = [
           charSpacing: 400,
           opacity: 0.6,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2085,8 +2052,8 @@ const street: TypographyComposition[] = [
     category: "street",
     previewText: {
       headline: "SEM REGRAS",
-      subtitle: "A rua e o nosso palco",
-      cta: "COLA AI",
+      subtitle: "A rua é o nosso palco",
+      cta: "COLA AÍ",
     },
     layers: [
       {
@@ -2106,14 +2073,13 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           lineHeight: 1.0,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 14, offsetX: 3, offsetY: 5 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "A rua e o nosso palco",
+          text: "A rua é o nosso palco",
           left: 540,
           top: 570,
           originX: "center",
@@ -2133,7 +2099,7 @@ const street: TypographyComposition[] = [
         role: "cta",
         type: "textbox",
         props: {
-          text: "COLA AI",
+          text: "COLA AÍ",
           left: 540,
           top: 670,
           originX: "center",
@@ -2146,7 +2112,6 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 150,
           shadow: { color: "rgba(0,0,0,0.6)", blur: 8, offsetX: 2, offsetY: 3 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2177,7 +2142,6 @@ const street: TypographyComposition[] = [
           textAlign: "left",
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 16, offsetX: 2, offsetY: 5 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -2230,7 +2194,6 @@ const street: TypographyComposition[] = [
           shadow: { color: "rgba(0,0,0,0.8)", blur: 18, offsetX: 0, offsetY: 6 },
           stroke: "rgba(255,255,255,0.15)",
           strokeWidth: 1,
-          textTransform: "uppercase",
         },
       },
       {
@@ -2250,7 +2213,6 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 250,
           shadow: { color: "rgba(0,0,0,0.5)", blur: 6, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2261,7 +2223,7 @@ const street: TypographyComposition[] = [
     category: "street",
     previewText: {
       headline: "VIVE A VIDA",
-      subtitle: "Cada momento e unico",
+      subtitle: "Cada momento é único",
       cta: "SEGUE O FLUXO",
     },
     layers: [
@@ -2282,14 +2244,13 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           lineHeight: 0.9,
           shadow: { color: "rgba(0,0,0,0.7)", blur: 16, offsetX: 0, offsetY: 5 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Cada momento e unico",
+          text: "Cada momento é único",
           left: 540,
           top: 520,
           originX: "center",
@@ -2322,7 +2283,6 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           charSpacing: 100,
           shadow: { color: "rgba(0,0,0,0.6)", blur: 8, offsetX: 2, offsetY: 3 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2353,7 +2313,6 @@ const street: TypographyComposition[] = [
           textAlign: "center",
           lineHeight: 0.95,
           shadow: { color: "rgba(0,0,0,0.75)", blur: 18, offsetX: 0, offsetY: 6 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -2386,6 +2345,7 @@ const street: TypographyComposition[] = [
           width: 1080,
           height: 400,
           fill: "rgba(0,0,0,0.5)",
+          selectable: false,
         },
       },
     ],
@@ -2403,7 +2363,7 @@ const luxury: TypographyComposition[] = [
     category: "luxury",
     previewText: {
       headline: "Refinamento Absoluto",
-      subtitle: "Uma experiencia exclusiva para voce",
+      subtitle: "Uma experiência exclusiva para você",
       cta: "DESCUBRA",
     },
     layers: [
@@ -2431,7 +2391,7 @@ const luxury: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Uma experiencia exclusiva para voce",
+          text: "Uma experiência exclusiva para você",
           left: 540,
           top: 540,
           originX: "center",
@@ -2446,7 +2406,6 @@ const luxury: TypographyComposition[] = [
           lineHeight: 1.6,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
@@ -2467,7 +2426,6 @@ const luxury: TypographyComposition[] = [
           charSpacing: 600,
           opacity: 0.8,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2477,15 +2435,15 @@ const luxury: TypographyComposition[] = [
     name: "Luxo EB Garamond",
     category: "luxury",
     previewText: {
-      headline: "Legado de Excelencia",
-      subtitle: "Qualidade que transcende geracoes",
+      headline: "Legado de Excelência",
+      subtitle: "Qualidade que transcende gerações",
     },
     layers: [
       {
         role: "headline",
         type: "textbox",
         props: {
-          text: "Legado de Excelencia",
+          text: "Legado de Excelência",
           left: 100,
           top: 440,
           originX: "left",
@@ -2505,7 +2463,7 @@ const luxury: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Qualidade que transcende geracoes",
+          text: "Qualidade que transcende gerações",
           left: 100,
           top: 590,
           originX: "left",
@@ -2520,7 +2478,6 @@ const luxury: TypographyComposition[] = [
           lineHeight: 1.6,
           opacity: 0.7,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2530,8 +2487,8 @@ const luxury: TypographyComposition[] = [
     name: "Luxo Playfair Dourado",
     category: "luxury",
     previewText: {
-      headline: "Colecao Premium",
-      subtitle: "Exclusividade e sofisticacao em cada detalhe",
+      headline: "Coleção Premium",
+      subtitle: "Exclusividade e sofisticação em cada detalhe",
       cta: "RESERVE AGORA",
     },
     layers: [
@@ -2553,14 +2510,13 @@ const luxury: TypographyComposition[] = [
           charSpacing: 800,
           opacity: 0.8,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
       {
         role: "headline",
         type: "textbox",
         props: {
-          text: "Colecao Premium",
+          text: "Coleção Premium",
           left: 540,
           top: 440,
           originX: "center",
@@ -2579,7 +2535,7 @@ const luxury: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Exclusividade e sofisticacao em cada detalhe",
+          text: "Exclusividade e sofisticação em cada detalhe",
           left: 540,
           top: 570,
           originX: "center",
@@ -2614,7 +2570,6 @@ const luxury: TypographyComposition[] = [
           charSpacing: 500,
           opacity: 0.8,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2625,7 +2580,7 @@ const luxury: TypographyComposition[] = [
     category: "luxury",
     previewText: {
       headline: "Onde o Luxo Encontra a Arte",
-      subtitle: "Pecas selecionadas a mao",
+      subtitle: "Peças selecionadas à mão",
     },
     layers: [
       {
@@ -2652,7 +2607,7 @@ const luxury: TypographyComposition[] = [
         role: "subtitle",
         type: "textbox",
         props: {
-          text: "Pecas selecionadas a mao",
+          text: "Peças selecionadas à mão",
           left: 540,
           top: 860,
           originX: "center",
@@ -2667,7 +2622,6 @@ const luxury: TypographyComposition[] = [
           lineHeight: 1.6,
           opacity: 0.65,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
@@ -2680,6 +2634,7 @@ const luxury: TypographyComposition[] = [
           width: 1080,
           height: 430,
           fill: "rgba(0,0,0,0.45)",
+          selectable: false,
         },
       },
     ],
@@ -2753,7 +2708,6 @@ const luxury: TypographyComposition[] = [
           charSpacing: 600,
           opacity: 0.8,
           shadow: { color: "rgba(0,0,0,0.3)", blur: 4, offsetX: 0, offsetY: 2 },
-          textTransform: "uppercase",
         },
       },
     ],
