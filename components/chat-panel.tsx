@@ -32,7 +32,8 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useAtom } from "jotai";
-import { editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
+import { useAtomValue } from "jotai";
+import { editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
 import { generateImageAction } from "@/app/actions/image/create";
 import { editWithFlux } from "@/app/actions/image/edit-with-flux";
 import { templates, type Template } from "@/lib/templates";
@@ -124,8 +125,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // Track generated images per assistant message so they render inline in chat
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
-  const [, setEditorOpen] = useAtom(editorOpenAtom);
+  const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [, setEditorSession] = useAtom(editorSessionAtom);
+  const editorHandle = useAtomValue(editorHandleAtom);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
   const [productAdState, setProductAdState] = useState<{
@@ -717,6 +719,58 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
 
       const postData = await parsePostData(fullText);
       if (postData) {
+        // If editor is already open and action is an update, apply directly without regenerating
+        if (editorOpen && editorHandle && postData.action && postData.action !== "create" && postData.action !== "edit") {
+          switch (postData.action) {
+            case "update-text": {
+              const target = (postData.target || "headline") as "headline" | "subtitle" | "cta";
+              const text = target === "headline" ? postData.headline : target === "subtitle" ? postData.subtitle : postData.cta;
+              if (text) {
+                const styles = postData.textStyles?.[target];
+                editorHandle.updateTextByKey(target, text, styles as Partial<ActiveTextProps> | undefined);
+              }
+              toast.success("Texto atualizado!");
+              break;
+            }
+            case "update-background": {
+              if (postData.imagePrompt) {
+                toast.info("Gerando novo fundo...");
+                const result = await generateImageAction({ prompt: postData.imagePrompt, modelId: "gemini" });
+                if (!("error" in result)) {
+                  await editorHandle.setBackground(result.url);
+                  toast.success("Fundo atualizado!");
+                } else {
+                  toast.error(`Erro: ${result.error}`);
+                }
+              }
+              break;
+            }
+            case "add-element": {
+              editorHandle.addText();
+              if (postData.headline) {
+                setTimeout(() => {
+                  const styles = postData.textStyles?.headline;
+                  editorHandle.updateTextByKey("headline", postData.headline!, styles as Partial<ActiveTextProps> | undefined);
+                }, 100);
+              }
+              toast.success("Elemento adicionado!");
+              break;
+            }
+            case "apply-style": {
+              if (postData.textStyles) {
+                for (const [key, style] of Object.entries(postData.textStyles)) {
+                  if (style) {
+                    editorHandle.updateTextByKey(key as "headline" | "subtitle" | "cta", "", style as Partial<ActiveTextProps>);
+                  }
+                }
+                toast.success("Estilo aplicado!");
+              }
+              break;
+            }
+          }
+          return;
+        }
+
         activeMsgIdRef.current = message.id;
         await createPipeline(postData);
         activeMsgIdRef.current = null;

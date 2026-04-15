@@ -19,12 +19,12 @@ export const TextStyleSchema = z.object({
 });
 
 export const PostDataSchema = z.object({
-  headline: z.string(),
+  headline: z.string().optional().default(""),
   subtitle: z.string().optional(),
   cta: z.string().optional(),
   legenda: z.string().optional(),
   hashtags: z.array(z.string()).optional().default([]),
-  imagePrompt: z.string(),
+  imagePrompt: z.string().optional().default(""),
   textStyles: z
     .object({
       headline: TextStyleSchema.optional(),
@@ -40,7 +40,8 @@ export const PostDataSchema = z.object({
     })
     .optional(),
   type: z.enum(["video"]).optional(),
-  action: z.enum(["edit"]).optional(),
+  action: z.enum(["create", "edit", "update-text", "update-background", "add-element", "apply-style"]).optional().default("create"),
+  target: z.string().optional(),
   slides: z
     .array(
       z.object({

@@ -531,7 +531,7 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const target = textboxes[idx] as any;
           if (!target) return;
-          target.set("text", text);
+          if (text) target.set("text", text);
           if (styles) {
             const directProps = ["fontFamily", "fontSize", "fill", "fontWeight", "fontStyle", "textAlign", "strokeWidth", "stroke", "charSpacing", "lineHeight", "opacity"] as const;
             for (const k of directProps) {
