@@ -1,4 +1,8 @@
 import { atom } from "jotai";
+import type { PostEditorHandle } from "@/components/post-editor";
+
+// Shared handle so sidebar tabs can call editor methods
+export const editorHandleAtom = atom<PostEditorHandle | null>(null);
 
 export interface EditorSession {
   imageUrl: string | null; // background image data URL

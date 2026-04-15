@@ -3,7 +3,7 @@
 import { useAtom } from "jotai";
 import { useCallback, useRef, useState } from "react";
 import { DownloadIcon, ArrowLeftIcon } from "lucide-react";
-import { editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
+import { editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
 import { EditorSidebar } from "./editor-sidebar";
 import { PostEditor, type ActiveTextProps, type PostEditorHandle } from "./post-editor";
 import { PostEditorToolbar } from "./post-editor-toolbar";
@@ -17,12 +17,14 @@ export function EditorView({ agentId }: EditorViewProps) {
   const [session] = useAtom(editorSessionAtom);
   const editorRef = useRef<PostEditorHandle>(null);
   const [activeTextProps, setActiveTextProps] = useState<ActiveTextProps | null>(null);
+  const [, setEditorHandle] = useAtom(editorHandleAtom);
 
   const handleClose = useCallback(() => {
     setEditorOpen(false);
   }, [setEditorOpen]);
 
   const handleReady = useCallback(() => {
+    if (editorRef.current) setEditorHandle(editorRef.current);
     if (session.headline || session.subtitle || session.cta) {
       editorRef.current?.initWithTextLayers({
         headline: session.headline,
@@ -33,7 +35,7 @@ export function EditorView({ agentId }: EditorViewProps) {
         textStyles: session.textStyles as any,
       });
     }
-  }, [session]);
+  }, [session, setEditorHandle]);
 
   const handleDownload = useCallback(() => {
     const dataUrl = editorRef.current?.exportImage();
