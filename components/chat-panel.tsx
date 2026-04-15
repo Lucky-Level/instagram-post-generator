@@ -31,12 +31,13 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
+import { useAtom } from "jotai";
+import { editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
 import { generateImageAction } from "@/app/actions/image/create";
 import { editWithFlux } from "@/app/actions/image/edit-with-flux";
 import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
 import { type PlatformFormat, getPlatformFormats, groupByPlatform, toFluxAspectRatio } from "@/lib/platform-formats";
-import { PostEditorModal } from "./post-editor-modal";
 import type { ActiveTextProps } from "./post-editor";
 import type { PostData } from "@/lib/post-data-schema";
 import { useBackgroundRemoval } from "@/hooks/use-background-removal";
@@ -123,16 +124,8 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // Track generated images per assistant message so they render inline in chat
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
-  const [editorImage, setEditorImage] = useState<{
-    msgId: string;
-    idx: number;
-    url: string;
-    headline?: string;
-    subtitle?: string;
-    cta?: string;
-    logo?: { x: number; y: number; width: number };
-    textStyles?: GeneratedImage["textStyles"];
-  } | null>(null);
+  const [, setEditorOpen] = useAtom(editorOpenAtom);
+  const [, setEditorSession] = useAtom(editorSessionAtom);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
   const [productAdState, setProductAdState] = useState<{
@@ -181,6 +174,22 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       [msgId]: [...(prev[msgId] ?? []), img],
     }));
   }, []);
+
+  const openInEditor = useCallback((imageUrl: string, postData: { headline?: string; subtitle?: string; cta?: string; textStyles?: GeneratedImage["textStyles"]; logo?: { x: number; y: number; width: number } }, format?: { id: string; width: number; height: number }) => {
+    setEditorSession({
+      imageUrl,
+      headline: postData.headline,
+      subtitle: postData.subtitle,
+      cta: postData.cta,
+      textStyles: postData.textStyles,
+      logoUrl: undefined, // TODO: get from brand agent
+      logoPosition: postData.logo,
+      canvasWidth: format?.width ?? 1080,
+      canvasHeight: format?.height ?? 1080,
+      format: format?.id ?? "instagram-feed-square",
+    });
+    setEditorOpen(true);
+  }, [setEditorSession, setEditorOpen]);
 
   const composeCreative = useCallback(async (params: {
     backgroundUrl: string;
@@ -517,18 +526,11 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                       : n,
                   ),
                 );
-                const composedSlideUrl = await composeCreative({
-                  backgroundUrl: result.url,
-                  headline: data.headline,
-                  subtitle: data.subtitle,
-                  cta: data.cta,
-                  textStyles: data.textStyles,
-                  logo: data.logo,
-                  logoUrl: undefined,
-                  width: primaryW,
-                  height: primaryH,
-                });
-                addChatImage({ url: composedSlideUrl, description: result.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+                addChatImage({ url: result.url, description: result.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+                // Open editor for the first slide
+                if (i === 0) {
+                  openInEditor(result.url, { headline: data.headline, subtitle: data.subtitle, cta: data.cta, textStyles: data.textStyles, logo: data.logo }, { id: primaryFormat.id, width: primaryW, height: primaryH });
+                }
                 carouselSuccess++;
                 updateStep(`slide-${i}`, "done");
               } else {
@@ -674,70 +676,10 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                     : n,
                 ),
               );
-              const composedUrl = await composeCreative({
-                backgroundUrl: imageResult.url,
-                headline: data.headline,
-                subtitle: data.subtitle,
-                cta: data.cta,
-                textStyles: data.textStyles,
-                logo: data.logo,
-                logoUrl: undefined,
-                width: primaryW,
-                height: primaryH,
-              });
-              addChatImage({ url: composedUrl, description: imageResult.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name} (${primaryW}×${primaryH})`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+              addChatImage({ url: imageResult.url, description: imageResult.description, platform: `${primaryFormat.platform} — ${primaryFormat.format_name} (${primaryW}×${primaryH})`, headline: data.headline, subtitle: data.subtitle, cta: data.cta, logo: data.logo, textStyles: data.textStyles });
+              // Open Fabric.js editor instead of Satori/Sharp composition
+              openInEditor(imageResult.url, { headline: data.headline, subtitle: data.subtitle, cta: data.cta, textStyles: data.textStyles, logo: data.logo }, { id: primaryFormat.id, width: primaryW, height: primaryH });
               updateStep("media-node", "done");
-
-              // Generate variants for other selected platform formats
-              const extraFormats = selectedFormats
-                .filter((fid) => fid !== selectedFormats[0])
-                .map((fid) => allFormats.find((f) => f.id === fid))
-                .filter(Boolean) as PlatformFormat[];
-
-              if (extraFormats.length > 0) {
-                toast.info(`Gerando ${extraFormats.length} variante(s) de plataforma...`);
-                for (const fmt of extraFormats) {
-                  try {
-                    const composeRes = await fetch("/api/compose", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        imageUrl: imageResult.url,
-                        width: fmt.width,
-                        height: fmt.height,
-                        fit: "cover",
-                      }),
-                    });
-                    if (composeRes.ok) {
-                      const composed = await composeRes.json();
-                      const composedVariantUrl = await composeCreative({
-                        backgroundUrl: composed.url,
-                        headline: data.headline,
-                        subtitle: data.subtitle,
-                        cta: data.cta,
-                        textStyles: data.textStyles,
-                        logo: data.logo,
-                        logoUrl: undefined,
-                        width: fmt.width,
-                        height: fmt.height,
-                      });
-                      addChatImage({
-                        url: composedVariantUrl,
-                        description: `${fmt.platform} - ${fmt.format_name} (${fmt.width}x${fmt.height})`,
-                        platform: `${fmt.platform} ${fmt.format_name}`,
-                        headline: data.headline,
-                        subtitle: data.subtitle,
-                        cta: data.cta,
-                        logo: data.logo,
-                        textStyles: data.textStyles,
-                      });
-                    }
-                  } catch {
-                    // Variant generation failed silently
-                  }
-                }
-              }
-
               toast.success("Post criado!");
             }
           } else {
@@ -755,7 +697,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         setGenerating(false);
       }
     },
-    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, composeCreative, selectedFormats],
+    [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, openInEditor, selectedFormats],
   );
 
   const { messages, sendMessage, status } = useChat({
@@ -1065,7 +1007,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                         {/* Hover overlay with Edit + Download */}
                         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100 transition-all">
                           <button
-                            onClick={() => setEditorImage({ msgId: msg.id, idx, url: img.url, headline: img.headline, subtitle: img.subtitle, cta: img.cta, logo: img.logo, textStyles: img.textStyles })}
+                            onClick={() => openInEditor(img.url, { headline: img.headline, subtitle: img.subtitle, cta: img.cta, textStyles: img.textStyles, logo: img.logo })}
                             className="flex size-10 items-center justify-center rounded-full bg-white/90 text-black shadow-md hover:bg-white transition-colors"
                             title="Editar no canvas"
                           >
@@ -1402,51 +1344,6 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Post Editor Modal */}
-      {editorImage && (
-        <PostEditorModal
-          imageUrl={editorImage.url}
-          headline={editorImage.headline}
-          subtitle={editorImage.subtitle}
-          cta={editorImage.cta}
-          open={!!editorImage}
-          agentId={agentId}
-          // TODO: pass brand logo URL (logoUrl comes from brand_kit, not available here yet)
-          logoUrl={undefined}
-          logoPosition={editorImage.logo}
-          textStyles={editorImage.textStyles}
-          onClose={() => setEditorImage(null)}
-          onSave={(dataUrl) => {
-            const { msgId, idx } = editorImage;
-            setChatImages((prev) => {
-              const imgs = [...(prev[msgId] ?? [])];
-              if (imgs[idx]) {
-                imgs[idx] = { ...imgs[idx], url: dataUrl };
-              }
-              return { ...prev, [msgId]: imgs };
-            });
-
-            // Gravar estilo aprovado no brand_memory (fire-and-forget)
-            if (editorImage.textStyles && agentId) {
-              fetch("/api/brand-memory", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  agentId,
-                  type: "approved_style",
-                  content: JSON.stringify({
-                    textStyles: editorImage.textStyles,
-                    approvedAt: new Date().toISOString(),
-                  }),
-                }),
-              }).catch(() => {
-                // silencioso — nao bloquear o save por falha no memory
-              });
-            }
-          }}
-        />
       )}
 
       {/* Input area — Pletor style */}
