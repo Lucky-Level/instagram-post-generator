@@ -2,14 +2,20 @@
 
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EyeIcon,
+  EyeOffIcon,
   ImageIcon,
   LayoutTemplateIcon,
   LayersIcon,
+  LockIcon,
   PaletteIcon,
   ShapesIcon,
   TypeIcon,
+  UnlockIcon,
   UploadIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +27,7 @@ import {
 } from "@/lib/editor-state";
 import { TEXT_STYLE_PRESETS } from "@/lib/text-style-presets";
 import { getAssets, type Asset } from "@/lib/asset-storage";
+import { getTemplatesByCategory } from "@/lib/editor-templates";
 
 const TABS: { id: EditorTab; icon: typeof TypeIcon; label: string }[] = [
   { id: "templates", icon: LayoutTemplateIcon, label: "Templates" },
@@ -64,7 +71,7 @@ export function EditorSidebar() {
 function TabContent({ tab }: { tab: EditorTab }) {
   switch (tab) {
     case "templates":
-      return <PlaceholderTab title="Templates" />;
+      return <TemplatesTab />;
     case "text":
       return <TextTab />;
     case "images":
@@ -74,7 +81,7 @@ function TabContent({ tab }: { tab: EditorTab }) {
     case "brand":
       return <BrandTab />;
     case "layers":
-      return <PlaceholderTab title="Layers" />;
+      return <LayersTab />;
   }
 }
 
@@ -387,13 +394,167 @@ function BrandTab() {
   );
 }
 
-/* ─────────── Placeholder Tab ─────────── */
+/* ─────────── Layers Tab ─────────── */
 
-function PlaceholderTab({ title }: { title: string }) {
+function LayersTab() {
+  const editorHandle = useAtomValue(editorHandleAtom);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [layers, setLayers] = useState<any[]>([]);
+
+  const refresh = useCallback(() => {
+    const objects = editorHandle?.getObjects() ?? [];
+    setLayers([...objects].reverse()); // reverse so top of list = frontmost
+  }, [editorHandle]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // Auto-refresh every 2 seconds
+  useEffect(() => {
+    const interval = setInterval(refresh, 2000);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const getIcon = (type: string, isLogo: boolean) => {
+    if (isLogo) return "\u2605";
+    switch (type) {
+      case "textbox": return "T";
+      case "rect": return "\u25A1";
+      case "circle": return "\u25CB";
+      case "triangle": return "\u25B3";
+      case "line": return "\u2500";
+      case "image": return "\u229E";
+      default: return "?";
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getLabel = (layer: any) => {
+    if (layer.isLogo) return "Logo";
+    if (layer.text) return layer.text.substring(0, 20);
+    return layer.type;
+  };
+
+  // Convert from reversed display index back to canvas index
+  const realIndex = (displayIdx: number) => layers.length - 1 - displayIdx;
+
   return (
     <div className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
-      <p className="text-xs text-muted-foreground">Em breve</p>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Layers</h3>
+        <button onClick={refresh} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+          Atualizar
+        </button>
+      </div>
+
+      {layers.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nenhum elemento</p>
+      ) : (
+        <div className="space-y-0.5">
+          {layers.map((layer, displayIdx) => {
+            const idx = realIndex(displayIdx);
+            return (
+              <div key={`${layer.type}-${idx}`} className="flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-xs">
+                <span className="w-4 text-center text-muted-foreground">{getIcon(layer.type, layer.isLogo)}</span>
+                <span className={cn("flex-1 truncate", !layer.visible && "line-through opacity-40")}>
+                  {getLabel(layer)}
+                </span>
+                {/* Visibility */}
+                <button
+                  onClick={() => { editorHandle?.setObjectVisibility(idx, !layer.visible); refresh(); }}
+                  title={layer.visible ? "Ocultar" : "Mostrar"}
+                  className="p-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  {layer.visible ? <EyeIcon className="size-3" /> : <EyeOffIcon className="size-3" />}
+                </button>
+                {/* Lock */}
+                <button
+                  onClick={() => { editorHandle?.setObjectLocked(idx, !layer.locked); refresh(); }}
+                  title={layer.locked ? "Desbloquear" : "Bloquear"}
+                  className="p-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  {layer.locked ? <LockIcon className="size-3" /> : <UnlockIcon className="size-3" />}
+                </button>
+                {/* Move up (bring forward) */}
+                <button
+                  onClick={() => { if (idx < layers.length - 1) { editorHandle?.reorderObject(idx, idx + 1); refresh(); } }}
+                  disabled={idx >= layers.length - 1}
+                  className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                  title="Mover para frente"
+                >
+                  <ChevronUpIcon className="size-3" />
+                </button>
+                {/* Move down (send backward) */}
+                <button
+                  onClick={() => { if (idx > 0) { editorHandle?.reorderObject(idx, idx - 1); refresh(); } }}
+                  disabled={idx <= 0}
+                  className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-20"
+                  title="Mover para tras"
+                >
+                  <ChevronDownIcon className="size-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────── Templates Tab ─────────── */
+
+function TemplatesTab() {
+  const editorHandle = useAtomValue(editorHandleAtom);
+  const [category, setCategory] = useState<string>("all");
+
+  const categories = [
+    { id: "all", label: "Todos" },
+    { id: "feed", label: "Feed" },
+    { id: "stories", label: "Stories" },
+    { id: "ads", label: "Ads" },
+    { id: "minimal", label: "Minimal" },
+    { id: "bold", label: "Bold" },
+  ];
+
+  const templates = getTemplatesByCategory(category === "all" ? undefined : category);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Templates</h3>
+
+      {/* Category filter */}
+      <div className="flex flex-wrap gap-1">
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => setCategory(cat.id)}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+              category === cat.id
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Template grid */}
+      <div className="space-y-2">
+        {templates.map((template) => (
+          <button
+            key={template.id}
+            onClick={() => editorHandle?.applyTemplate(template.objects)}
+            className="w-full rounded-lg border border-border p-3 text-left hover:bg-secondary/60 transition-colors"
+          >
+            <span className="text-sm font-medium text-foreground">{template.name}</span>
+            <span className="ml-2 text-[10px] text-muted-foreground capitalize">{template.category}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

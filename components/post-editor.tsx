@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { loadGoogleFont } from "@/lib/google-fonts";
+import type { TemplateObject } from "@/lib/editor-templates";
 
 export interface ActiveTextProps {
   // existing
@@ -69,6 +70,7 @@ export interface PostEditorHandle {
     text: string,
     styles?: Partial<ActiveTextProps>,
   ) => void;
+  applyTemplate: (objects: TemplateObject[]) => Promise<void>;
 }
 
 interface PostEditorProps {
@@ -537,6 +539,55 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
               if ((styles as any)[k] !== undefined) target.set(k, (styles as any)[k]);
             }
           }
+          canvas.renderAll();
+        },
+
+        applyTemplate: async (objects: TemplateObject[]) => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas) return;
+          const fabric = await import("fabric");
+
+          // Remove all objects (keep background)
+          const existing = canvas.getObjects();
+          for (const obj of existing) canvas.remove(obj);
+
+          for (const def of objects) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let fabricObj: any;
+            const p = { ...def.props };
+
+            // Handle shadow object -> fabric.Shadow
+            if (p.shadow && typeof p.shadow === "object") {
+              p.shadow = new fabric.Shadow(p.shadow);
+            }
+
+            switch (def.type) {
+              case "textbox": {
+                const text = p.text || "Text";
+                delete p.text;
+                if (p.fontFamily) {
+                  await loadGoogleFont(p.fontFamily);
+                }
+                fabricObj = new fabric.Textbox(text, { ...p, editable: true });
+                break;
+              }
+              case "rect":
+                fabricObj = new fabric.Rect(p);
+                break;
+              case "circle":
+                fabricObj = new fabric.Circle(p);
+                break;
+              case "triangle":
+                fabricObj = new fabric.Triangle(p);
+                break;
+              case "line":
+                fabricObj = new fabric.Line([0, 0, p.width || 200, 0], p);
+                break;
+            }
+
+            if (fabricObj) canvas.add(fabricObj);
+          }
+
           canvas.renderAll();
         },
       }),
