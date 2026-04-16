@@ -767,13 +767,16 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   }, [createPipelineAction, pipelineRunMode]);
 
   // Sync pipeline Jotai state → ReactFlow canvas nodes/edges
+  // Only rebuild graph when pipeline is created (createdAt changes), not on every node update
+  const pipelineCreatedAt = pipelineState?.createdAt;
   useEffect(() => {
-    if (!pipelineState) return;
+    if (!pipelineState || !pipelineCreatedAt) return;
     const { nodes: rfNodes, edges: rfEdges } = buildPipelineGraph(pipelineState);
     setNodes(rfNodes);
     setEdges(rfEdges);
     setTimeout(() => fitView({ padding: 0.2, duration: 500 }), 100);
-  }, [pipelineState, setNodes, setEdges, fitView]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineCreatedAt, setNodes, setEdges, fitView]);
 
   // Build dynamic headers for chat transport (includes pipeline context when active)
   const pipelineContextHeader = pipelineState ? encodeURIComponent(getPipelineSummary(pipelineState)) : undefined;
@@ -889,8 +892,34 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               updatePipelineNode({ nodeId: pipelineNodeId, status: "skipped" });
               break;
           }
+          // Pipeline handled — don't fall through to old createPipeline
+          return;
         }
 
+        // Studio mode: auto-create pipeline if not active yet, skip old flow
+        if (!fullscreen && !pipelineState && postData.action !== "update-text" && postData.action !== "update-background" && postData.action !== "add-element" && postData.action !== "apply-style") {
+          // Auto-init pipeline (with avatar if the agent mentioned an avatar)
+          const hasAvatar = !!(postData.imagePrompt && /avatar|person|face|rosto|pessoa/i.test(postData.imagePrompt));
+          createPipelineAction({ includeAvatar: hasAvatar, runMode: pipelineRunMode });
+          // Pre-fill briefing from postData
+          const briefingData: Record<string, unknown> = {};
+          if (postData.headline) briefingData.tema = postData.headline;
+          if (postData.imagePrompt) briefingData.summary = postData.imagePrompt;
+          updatePipelineNode({ nodeId: "briefing-briefing-final", status: "done", data: { ...briefingData, approved: true } });
+          // Pre-fill copy if available
+          if (postData.headline) {
+            updatePipelineNode({ nodeId: "copy-gerar-textos", status: "done", data: { headline: postData.headline, cta: postData.cta ?? "", variants: [postData.headline], selected: 0 } });
+          }
+          toast.success("Pipeline criado! O agente vai executar etapa por etapa.");
+          return;
+        }
+
+        // Pipeline already active in Studio: agent should use pipelineAction, skip old flow
+        if (!fullscreen && pipelineState) {
+          return;
+        }
+
+        // App mode (fullscreen): use old createPipeline flow
         activeMsgIdRef.current = message.id;
         await createPipeline(postData);
         activeMsgIdRef.current = null;
@@ -1074,15 +1103,11 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
         </div>
       )}
 
-      {/* Pipeline init button — studio mode only */}
-      {!pipelineState && !fullscreen && (
-        <div className="px-4 py-3 border-b border-border">
-          <button
-            onClick={() => initPipeline(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
-          >
-            Novo Pipeline Criativo
-          </button>
+      {/* Pipeline status indicator — studio mode only */}
+      {pipelineState && !fullscreen && (
+        <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs text-muted-foreground">Pipeline ativo — {Object.values(pipelineState.nodes).filter(n => n.status === "done").length}/{Object.values(pipelineState.nodes).length} nodes</span>
         </div>
       )}
 
