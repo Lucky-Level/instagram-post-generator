@@ -11,8 +11,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { editorOpenAtom } from "@/lib/editor-state";
+import { propsPanelOpenAtom, setActiveNodeAtom, runModeAtom } from "@/lib/pipeline-state";
+import { PropertiesPanel } from "@/components/properties-panel";
 import { Canvas } from "@/components/canvas";
 import { ChatPanel } from "@/components/chat-panel";
 import { Controls } from "@/components/controls";
@@ -32,6 +34,9 @@ interface AgentInfo {
 const Index = () => {
   const [view, setView] = useState<ViewMode>("app");
   const [editorOpen] = useAtom(editorOpenAtom);
+  const propsPanelOpen = useAtomValue(propsPanelOpenAtom);
+  const setActiveNode = useSetAtom(setActiveNodeAtom);
+  const [runMode, setRunMode] = useAtom(runModeAtom);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -61,6 +66,16 @@ const Index = () => {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && propsPanelOpen) {
+        setActiveNode(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [propsPanelOpen, setActiveNode]);
 
   const switchAgent = (a: AgentInfo) => {
     setAgent(a);
@@ -201,6 +216,31 @@ const Index = () => {
               </button>
             </div>
 
+            {view === "studio" && (
+              <div className="flex items-center gap-0.5 bg-secondary rounded-lg p-0.5">
+                <button
+                  onClick={() => setRunMode("auto")}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                    runMode === "auto"
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Auto
+                </button>
+                <button
+                  onClick={() => setRunMode("manual")}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                    runMode === "manual"
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Manual
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setSettingsOpen(true)}
@@ -257,6 +297,9 @@ const Index = () => {
                     </Canvas>
                   </div>
                 )}
+
+                {/* Properties Panel (right sidebar, only when canvas is showing) */}
+                {!editorOpen && <PropertiesPanel />}
               </>
             )}
           </div>
