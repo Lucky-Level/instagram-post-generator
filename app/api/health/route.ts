@@ -62,6 +62,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results });
   }
 
+  if (test === "generate") {
+    // Full end-to-end test: generate image and return base64 (like /api/generate-image does)
+    try {
+      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+      if (!apiKey) return NextResponse.json({ error: "No Google key" }, { status: 500 });
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: "Generate an image: A red circle on white background. Simple." }] }],
+            generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        const err = await res.text();
+        return NextResponse.json({ error: `Gemini HTTP ${res.status}: ${err.slice(0, 300)}` }, { status: 502 });
+      }
+
+      const data = await res.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((p: { inlineData?: { data?: string; mimeType?: string } }) => p.inlineData);
+
+      if (!imagePart?.inlineData?.data) {
+        return NextResponse.json({ error: "No image in Gemini response" }, { status: 502 });
+      }
+
+      const mimeType = imagePart.inlineData.mimeType || "image/png";
+      const b64Length = imagePart.inlineData.data.length;
+      const dataUri = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+
+      // Return exactly like /api/generate-image does
+      return NextResponse.json({
+        url: dataUri,
+        type: "image/png",
+        description: "Health test image",
+        provider: "Gemini",
+        _debug: { b64Length, mimeType, urlLength: dataUri.length },
+      });
+    } catch (e) {
+      return NextResponse.json({ error: `Generate test failed: ${(e as Error).message}` }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     debug: { test, url: req.nextUrl.toString() },
