@@ -421,6 +421,8 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
 export const POST = async (req: Request) => {
   const { messages } = await req.json();
   const agentId = req.headers.get("x-agent-id") || undefined;
+  const pipelineContextRaw = req.headers.get("x-pipeline-context");
+  const pipelineContext = pipelineContextRaw ? decodeURIComponent(pipelineContextRaw) : undefined;
 
   const modelMessages = await convertToModelMessages(messages);
 
@@ -443,7 +445,11 @@ export const POST = async (req: Request) => {
     ? google("gemini-2.5-flash")
     : groq("llama-3.3-70b-versatile");
 
-  const systemPrompt = await buildSystemPrompt(agentId);
+  let systemPrompt = await buildSystemPrompt(agentId);
+
+  if (pipelineContext) {
+    systemPrompt += `\n\n## ESTADO DO PIPELINE ATUAL\n${pipelineContext}\n\nREGRAS DO PIPELINE:\n- Leia o estado acima ANTES de qualquer acao\n- Siga a ordem das etapas (Briefing → Copy → Layout → Avatar → Visual → Compose → Review)\n- Nao pule etapas\n- Atualize o node relevante com pipelineNodeId e pipelineAction no <post-data>\n- Se o usuario editou algo no painel de propriedades, voce PERCEBE a mudanca`;
+  }
 
   const result = streamText({
     model,

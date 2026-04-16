@@ -31,7 +31,7 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useAtomValue } from "jotai";
 import { editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
 import { providerConfigAtom } from "@/lib/provider-config";
@@ -45,6 +45,8 @@ import type { PostData } from "@/lib/post-data-schema";
 import { useBackgroundRemoval } from "@/hooks/use-background-removal";
 import { generateAdScene } from "@/app/actions/image/generate-ad-scene";
 import { ImageOptionsGallery, type ImageOption } from "@/components/image-options-gallery";
+import { pipelineStateAtom, createPipelineAtom, updatePipelineNodeAtom, getPipelineSummary, runModeAtom } from "@/lib/pipeline-state";
+import { buildPipelineGraph } from "@/lib/pipeline-graph";
 
 interface PipelineStep {
   id: string;
@@ -131,6 +133,10 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const [, setEditorSession] = useAtom(editorSessionAtom);
   const editorHandle = useAtomValue(editorHandleAtom);
   const providerConfig = useAtomValue(providerConfigAtom);
+  const [pipelineState, setPipelineState] = useAtom(pipelineStateAtom);
+  const createPipelineAction = useSetAtom(createPipelineAtom);
+  const updatePipelineNode = useSetAtom(updatePipelineNodeAtom);
+  const [pipelineRunMode] = useAtom(runModeAtom);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
   const [productAdState, setProductAdState] = useState<{
@@ -755,10 +761,30 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     [setNodes, setEdges, fitView, runMode, updateStep, scrollToPosition, addChatImage, openInEditor, selectedFormats],
   );
 
+  // --- Pipeline Studio: init + sync ---
+  const initPipeline = useCallback((includeAvatar: boolean) => {
+    createPipelineAction({ includeAvatar, runMode: pipelineRunMode });
+  }, [createPipelineAction, pipelineRunMode]);
+
+  // Sync pipeline Jotai state → ReactFlow canvas nodes/edges
+  useEffect(() => {
+    if (!pipelineState) return;
+    const { nodes: rfNodes, edges: rfEdges } = buildPipelineGraph(pipelineState);
+    setNodes(rfNodes);
+    setEdges(rfEdges);
+    setTimeout(() => fitView({ padding: 0.2, duration: 500 }), 100);
+  }, [pipelineState, setNodes, setEdges, fitView]);
+
+  // Build dynamic headers for chat transport (includes pipeline context when active)
+  const pipelineContextHeader = pipelineState ? encodeURIComponent(getPipelineSummary(pipelineState)) : undefined;
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/chat",
-      headers: agentId ? { "x-agent-id": agentId } : undefined,
+      headers: {
+        ...(agentId ? { "x-agent-id": agentId } : {}),
+        ...(pipelineContextHeader ? { "x-pipeline-context": pipelineContextHeader } : {}),
+      },
     }),
     onError: (error) => {
       toast.error(error.message || "Erro ao gerar resposta");
@@ -1021,6 +1047,18 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             <div className="size-2 rounded-full bg-primary" />
             <h2 className="font-medium text-sm">Agente Criativo</h2>
           </div>
+        </div>
+      )}
+
+      {/* Pipeline init button — studio mode only */}
+      {!pipelineState && !fullscreen && (
+        <div className="px-4 py-3 border-b border-border">
+          <button
+            onClick={() => initPipeline(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
+          >
+            Novo Pipeline Criativo
+          </button>
         </div>
       )}
 
