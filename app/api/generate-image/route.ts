@@ -277,6 +277,8 @@ interface RequestBody {
   targetWidth?: number;
   targetHeight?: number;
   providerConfig?: ProviderConfig;
+  sourceImageUrl?: string;
+  action?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -308,6 +310,40 @@ export async function POST(req: NextRequest) {
       targetHeight,
       providerConfig,
     );
+
+    // -----------------------------------------------------------------------
+    // Refine mode: img2img using existing image
+    // -----------------------------------------------------------------------
+    if (body.action === "refine" && body.sourceImageUrl) {
+      const userKeys = providerConfig?.apiKeys ?? {};
+      const replicateKey = userKeys.replicate || process.env.REPLICATE_API_TOKEN || "";
+      const googleKey = userKeys.google || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
+
+      // Prefer FLUX Kontext for img2img (best at preserving composition)
+      if (replicateKey) {
+        try {
+          const url = await tryFluxKontext(fullPrompt, [body.sourceImageUrl], aspectRatio, replicateKey);
+          return NextResponse.json({ url, type: "image/png", description: prompt.slice(0, 200), provider: "FLUX Kontext (refine)" });
+        } catch (e) {
+          console.log(`[generate-image] FLUX Kontext refine failed: ${(e as Error).message}`);
+        }
+      }
+
+      // Fallback to Gemini with source as reference
+      if (googleKey) {
+        try {
+          const url = await tryGemini(fullPrompt, [body.sourceImageUrl], googleKey);
+          return NextResponse.json({ url, type: "image/png", description: prompt.slice(0, 200), provider: "Gemini (refine)" });
+        } catch (e) {
+          console.log(`[generate-image] Gemini refine failed: ${(e as Error).message}`);
+        }
+      }
+
+      return NextResponse.json(
+        { error: "Refinamento requer FLUX Kontext (Replicate) ou Gemini API key configurada." },
+        { status: 400 },
+      );
+    }
 
     // -----------------------------------------------------------------------
     // Batch mode: generate N options concurrently

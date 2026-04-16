@@ -36,6 +36,7 @@ export interface PostEditorHandle {
   updateActiveText: (props: Partial<ActiveTextProps>) => void;
   deleteSelected: () => void;
   exportImage: () => string | null;
+  exportBackground: () => string | null;
   initWithTextLayers: (layers: {
     headline?: string;
     subtitle?: string;
@@ -319,6 +320,20 @@ export const PostEditor = forwardRef<PostEditorHandle, PostEditorProps>(
             quality: 1,
             multiplier: 1,
           });
+        },
+
+        exportBackground: () => {
+          const canvas = fabricCanvasRef.current;
+          if (!canvas || !canvas.backgroundImage) return null;
+          const bgImg = canvas.backgroundImage as any;
+          if (!bgImg._element) return null;
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = CANVAS_SIZE;
+          tempCanvas.height = CANVAS_SIZE;
+          const ctx = tempCanvas.getContext("2d");
+          if (!ctx) return null;
+          ctx.drawImage(bgImg._element, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+          return tempCanvas.toDataURL("image/jpeg", 0.85);
         },
 
         initWithTextLayers: async ({ headline, subtitle, cta, logoUrl, logoPosition, textStyles }) => {

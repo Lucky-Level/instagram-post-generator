@@ -787,19 +787,28 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             }
             case "update-background": {
               if (postData.imagePrompt) {
-                toast.info("Gerando novo fundo...");
+                // Try to get current background for refinement (img2img)
+                const currentBg = editorHandle.exportBackground?.() ?? null;
+
+                if (currentBg) {
+                  toast.info("Refinando fundo...");
+                } else {
+                  toast.info("Gerando novo fundo...");
+                }
+
                 const bgRes = await fetch("/api/generate-image", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     prompt: postData.imagePrompt,
                     providerConfig,
+                    ...(currentBg ? { sourceImageUrl: currentBg, action: "refine" } : {}),
                   }),
                 });
                 const result = await bgRes.json() as { url: string; type: string; description: string; provider?: string } | { error: string };
                 if (!("error" in result)) {
                   await editorHandle.setBackground(result.url);
-                  toast.success("Fundo atualizado!");
+                  toast.success(currentBg ? "Fundo refinado!" : "Fundo atualizado!");
                 } else {
                   toast.error(`Erro: ${result.error}`);
                 }
