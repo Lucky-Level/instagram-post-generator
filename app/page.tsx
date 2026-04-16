@@ -17,6 +17,7 @@ import { Canvas } from "@/components/canvas";
 import { ChatPanel } from "@/components/chat-panel";
 import { Controls } from "@/components/controls";
 import { EditorView } from "@/components/editor-view";
+import { SettingsPanel } from "@/components/settings-panel";
 import { Toolbar } from "@/components/toolbar";
 import { GatewayProvider } from "@/providers/gateway";
 import { ReactFlowProvider } from "@/providers/react-flow";
@@ -35,6 +36,7 @@ const Index = () => {
   const [agent, setAgent] = useState<AgentInfo | null>(null);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [showAgentMenu, setShowAgentMenu] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Load active agent from localStorage + fetch agents list
   useEffect(() => {
@@ -200,7 +202,10 @@ const Index = () => {
             </div>
 
             <div className="flex items-center gap-1">
-              <button className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden sm:flex">
+              <button
+                onClick={() => setSettingsOpen(true)}
+                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden sm:flex"
+              >
                 <Settings2Icon className="size-4" />
               </button>
               <button className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden sm:flex">
@@ -256,6 +261,8 @@ const Index = () => {
             )}
           </div>
         </div>
+
+        <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </ReactFlowProvider>
     </GatewayProvider>
   );
