@@ -283,6 +283,7 @@ interface RequestBody {
 }
 
 export async function POST(req: NextRequest) {
+  console.log("[generate-image] Request received");
   try {
     const body = (await req.json()) as RequestBody;
     const {
@@ -294,6 +295,9 @@ export async function POST(req: NextRequest) {
       targetHeight,
       providerConfig,
     } = body;
+
+    console.log("[generate-image] Prompt length:", prompt?.length, "| refs:", referenceImages?.length ?? 0, "| aspect:", aspectRatio);
+    console.log("[generate-image] Google key present:", !!process.env.GOOGLE_GENERATIVE_AI_API_KEY, "| CF:", !!process.env.CF_API_TOKEN, "| Replicate:", !!process.env.REPLICATE_API_TOKEN);
 
     if (!prompt) {
       return NextResponse.json({ error: "prompt is required" }, { status: 400 });
@@ -457,12 +461,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.error("[generate-image] ALL PROVIDERS FAILED:", errors);
     return NextResponse.json(
       { error: `All providers failed:\n${errors.join("\n")}` },
       { status: 502 },
     );
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error("[generate-image] UNCAUGHT ERROR:", msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
