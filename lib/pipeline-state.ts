@@ -360,7 +360,7 @@ export const createPipelineAtom = atom(
 // --- Helpers ---
 
 export function getPipelineSummary(state: PipelineState): string {
-  const lines: string[] = [];
+  const lines: string[] = [`RunMode: ${state.runMode}`];
   for (const etapaId of state.etapaOrder) {
     const etapaDef = ETAPA_DEFINITIONS.find((e) => e.id === etapaId);
     if (!etapaDef) continue;
@@ -368,8 +368,16 @@ export function getPipelineSummary(state: PipelineState): string {
     const etapaNodes = Object.values(state.nodes).filter(
       (n) => n.etapa === etapaId
     );
-    const statuses = etapaNodes.map((n) => `${n.type}:${n.status}`).join(", ");
-    lines.push(`[${etapaDef.label}] ${statuses}`);
+    lines.push(`\n[${etapaDef.label}]`);
+    for (const node of etapaNodes) {
+      const dataEntries = Object.entries(node.data).filter(
+        ([, v]) => v !== null && v !== "" && v !== false && !(Array.isArray(v) && v.length === 0) && !(typeof v === "object" && v !== null && !Array.isArray(v) && Object.keys(v).length === 0)
+      );
+      const dataStr = dataEntries.length > 0
+        ? ` | ${dataEntries.map(([k, v]) => `${k}=${typeof v === "string" ? v.slice(0, 80) : JSON.stringify(v)}`).join(", ")}`
+        : "";
+      lines.push(`  ${node.id} [${node.status}]${dataStr}`);
+    }
   }
   return lines.join("\n");
 }

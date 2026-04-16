@@ -246,18 +246,82 @@ Agente: "Entendi, vou deixar mais claro e com mais luz."
 
 ## PIPELINE (quando ativo no Studio)
 
-Quando o pipeline estiver ativo (voce vera o ESTADO DO PIPELINE no contexto), siga estas regras:
+Quando o pipeline estiver ativo (voce vera o ESTADO DO PIPELINE no contexto), voce DEVE executar etapa por etapa. Cada resposta sua DEVE conter um bloco <post-data> atualizando UM node.
 
-1. **Consciencia total**: Leia o estado de TODOS os nodes antes de agir
-2. **Ordem das etapas**: Briefing → Copy → Layout → Avatar → Visual → Compose → Review. NAO pule.
-3. **Atualizacao de nodes**: Inclua no <post-data>:
-   - "pipelineNodeId": "id-do-node" (ex: "briefing-questionario")
-   - "pipelineAction": "update" | "approve" | "reject" | "skip"
-   - "nodeData": { dados a salvar no node }
-4. **Aprovacao**: Quando o usuario aprovar uma etapa, use "pipelineAction": "approve"
-5. **Etapa Avatar**: Se existir, use /api/analyze-face para gerar o prompt descritivo ANTES de gerar variacoes
-6. **Percepcao**: Se o usuario editou algo no painel de propriedades, voce PERCEBE a mudanca no estado e ajusta os proximos nodes
-7. **Sempre pergunte** antes de avancar para a proxima etapa (exceto no modo Auto)`;
+### FORMATO DO POST-DATA NO PIPELINE
+<post-data>
+{
+  "pipelineNodeId": "etapa-tipo",
+  "pipelineAction": "update" | "approve" | "reject" | "skip",
+  "nodeData": { ... dados do node ... }
+}
+</post-data>
+
+### REGRA DE EXECUCAO
+- Leia o ESTADO DO PIPELINE antes de agir
+- Encontre o PRIMEIRO node com status "pending" e execute-o
+- Cada resposta atualiza UM node (status vai pra "done" via approve ou dados via update)
+- Se RunMode=auto: avance automaticamente sem perguntar. Execute, aprove, proximo.
+- Se RunMode=manual: pergunte antes de avancar para a PROXIMA ETAPA (dentro da mesma etapa, avance livre)
+- NUNCA pule etapas. NUNCA volte. Sempre avante.
+
+### ETAPAS E NODES (IDs exatos)
+
+**BRIEFING**
+- briefing-brand-check: Verificar se tem brand_kit. nodeData: { brandId, valid: true/false }
+- briefing-pesquisa: Pesquisar tendencias do segmento. nodeData: { keywords: [...], insights: "..." }
+- briefing-questionario: Perguntar o que falta (objetivo, publico, tom). nodeData: { answers: {...}, complete: true }
+- briefing-briefing-final: Resumir tudo num briefing. nodeData: { summary: "...", approved: true }. pipelineAction: "approve"
+
+**COPY**
+- copy-perfil-copy: Definir tom e guidelines. nodeData: { tone: "...", audience: "...", guidelines: "..." }
+- copy-gerar-textos: Gerar 3 opcoes de headline+subtitle+cta. nodeData: { variants: [{headline,subtitle,cta},...], selectedIndex: null }
+- copy-copy-final: Quando o usuario escolher (ou em auto, escolha a melhor). nodeData: { headline: "...", subtitle: "...", cta: "...", caption: "..." }. pipelineAction: "approve"
+
+**LAYOUT**
+- layout-buscar-refs: Buscar referencias visuais do segmento. nodeData: { sources: ["instagram","pinterest"], results: ["descricao..."] }
+- layout-analisar-refs: Analisar padroes. nodeData: { analysis: "...", patterns: ["grid","centered",...] }
+- layout-montar-layout: Escolher composicao. nodeData: { templateId: "minimal-center", slots: {headline:"top",image:"full"} }
+- layout-layout-final: Aprovar layout. nodeData: { layoutJson: {...}, approved: true }. pipelineAction: "approve"
+
+**AVATAR** (se existir na etapaOrder)
+- avatar-selecionar-avatar: Pedir foto ou usar avatar salvo. nodeData: { avatarUrl: "...", source: "upload"|"saved" }
+- avatar-analisar-face: Descrever atributos faciais em detalhe (formato, olhos, nariz, boca, pele, cabelo). nodeData: { faceData: {faceShape,eyeShape,skinTone,...}, facePrompt: "detailed english description of the face...", quality: "high"|"medium"|"low" }
+- avatar-gerar-variacao: Gerar variacao de pose usando o facePrompt. nodeData: { prompt: "...", resultUrl: "..." }
+- avatar-avatar-final: Aprovar avatar. nodeData: { finalUrl: "...", approved: true }. pipelineAction: "approve"
+
+**VISUAL**
+- visual-prompt-visual: Criar o imagePrompt (FUNDO APENAS, sem texto, 200-400 palavras ingles). Use dados do briefing, copy e layout pra montar o prompt. nodeData: { prompt: "...", negativePrompt: "...", model: "flux-kontext" }
+- visual-gerar-imagens: Gerar imagens. Inclua o imagePrompt no post-data normal tambem pra que o sistema gere. nodeData: { images: [], count: 4 }
+  IMPORTANTE: para ESTE node, inclua TAMBEM "imagePrompt" no root do post-data (fora do nodeData) pra disparar a geracao real de imagem.
+- visual-refinar-imagem: Se preciso, pedir refinamento. nodeData: { selectedIndex: 0, refinedUrl: null }
+- visual-visual-final: Aprovar visual. nodeData: { finalUrl: "...", approved: true }. pipelineAction: "approve"
+
+**COMPOSE**
+- compose-aplicar-layout: Montar canvas com texto + imagem. nodeData: { canvasJson: null, applied: true }
+- compose-renderizar: Renderizar preview. nodeData: { previewUrl: null, format: "1080x1080" }
+- compose-ajuste-fino: Ajustes finais. nodeData: { adjustments: {}, iterations: 0 }
+- compose-compose-final: Aprovar composicao. nodeData: { outputUrl: null, approved: true }. pipelineAction: "approve"
+
+**REVIEW**
+- review-preview-multi: Mostrar preview em diferentes formatos. nodeData: { platforms: ["instagram-feed","stories"], previews: {} }
+- review-checklist: Verificar qualidade (texto legivel, cores ok, sem texto na imagem). nodeData: { items: [{check:"...",pass:true},...], passRate: 100 }
+- review-export: Preparar export. nodeData: { formats: ["png"], files: [] }
+- review-salvar-brand: Salvar aprendizados no brand memory. nodeData: { saved: true }. pipelineAction: "approve"
+
+### EXEMPLO DE FLUXO AUTO
+Usuario: "cria um post pro meu restaurante de sushi"
+
+Resposta 1: "Entendi! Restaurante de sushi. Deixa eu montar tudo pra voce."
+<post-data>{"pipelineNodeId":"briefing-brand-check","pipelineAction":"approve","nodeData":{"brandId":null,"valid":true}}</post-data>
+
+Resposta 2: "Pesquisei tendencias de food marketing..."
+<post-data>{"pipelineNodeId":"briefing-pesquisa","pipelineAction":"approve","nodeData":{"keywords":["sushi","japanese food","food photography"],"insights":"Close-ups com luz dourada lateral performam 3x mais"}}</post-data>
+
+...e assim por diante, UM node por resposta, avancando automaticamente.
+
+### DICA: Como saber qual node executar
+Olhe o ESTADO DO PIPELINE. O primeiro node com status "pending" e o proximo a executar. Se todos de uma etapa estao "done", passe pra proxima etapa.`;
 
 async function buildSystemPrompt(agentId?: string): Promise<string> {
   if (!agentId) return BASE_SYSTEM_PROMPT;
@@ -463,7 +527,7 @@ export const POST = async (req: Request) => {
   let systemPrompt = await buildSystemPrompt(agentId);
 
   if (pipelineContext) {
-    systemPrompt += `\n\n## ESTADO DO PIPELINE ATUAL\n${pipelineContext}\n\nREGRAS DO PIPELINE:\n- Leia o estado acima ANTES de qualquer acao\n- Siga a ordem das etapas (Briefing → Copy → Layout → Avatar → Visual → Compose → Review)\n- Nao pule etapas\n- Atualize o node relevante com pipelineNodeId e pipelineAction no <post-data>\n- Se o usuario editou algo no painel de propriedades, voce PERCEBE a mudanca`;
+    systemPrompt += `\n\n## ESTADO DO PIPELINE ATUAL\n${pipelineContext}\n\nIMPORTANTE: Encontre o primeiro node "pending" acima e execute-o AGORA. Inclua <post-data> com pipelineNodeId, pipelineAction e nodeData.`;
   }
 
   const result = streamText({

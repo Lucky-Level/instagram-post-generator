@@ -129,6 +129,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // Track generated images per assistant message so they render inline in chat
   const [chatImages, setChatImages] = useState<Record<string, GeneratedImage[]>>({});
   const activeMsgIdRef = useRef<string | null>(null);
+  const sendMessageRef = useRef<typeof sendMessage>(null!);
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [, setEditorSession] = useAtom(editorSessionAtom);
   const editorHandle = useAtomValue(editorHandleAtom);
@@ -892,7 +893,16 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               updatePipelineNode({ nodeId: pipelineNodeId, status: "skipped" });
               break;
           }
-          // Pipeline handled — don't fall through to old createPipeline
+          // Auto-advance: if auto mode and still pending nodes, send follow-up
+          if (pipelineRunMode === "auto") {
+            const allNodes = Object.values(pipelineState.nodes);
+            const hasPending = allNodes.some((n) => n.status === "pending");
+            if (hasPending) {
+              setTimeout(() => {
+                sendMessageRef.current({ text: "[pipeline: continuar proxima etapa]" });
+              }, 1500);
+            }
+          }
           return;
         }
 
@@ -911,6 +921,12 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             updatePipelineNode({ nodeId: "copy-gerar-textos", status: "done", data: { headline: postData.headline, cta: postData.cta ?? "", variants: [postData.headline], selected: 0 } });
           }
           toast.success("Pipeline criado! O agente vai executar etapa por etapa.");
+          // Auto-advance: trigger agent to start executing the pipeline
+          if (pipelineRunMode === "auto") {
+            setTimeout(() => {
+              sendMessageRef.current({ text: "[pipeline: iniciar execucao automatica]" });
+            }, 2000);
+          }
           return;
         }
 
@@ -926,6 +942,9 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       }
     },
   });
+
+  // Keep ref in sync for use inside onFinish closure
+  sendMessageRef.current = sendMessage;
 
   const isStreaming = status === "streaming" || status === "submitted";
 
