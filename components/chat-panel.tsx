@@ -44,6 +44,7 @@ import type { ActiveTextProps } from "./post-editor";
 import type { PostData } from "@/lib/post-data-schema";
 import { useBackgroundRemoval } from "@/hooks/use-background-removal";
 import { generateAdScene } from "@/app/actions/image/generate-ad-scene";
+import { ImageOptionsGallery, type ImageOption } from "@/components/image-options-gallery";
 
 interface PipelineStep {
   id: string;
@@ -143,6 +144,13 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
     prompt: string;
     loading: boolean;
   } | null>(null);
+  const [pendingImageOptions, setPendingImageOptions] = useState<{
+    options: ImageOption[];
+    selectedIndex: number | null;
+    postData: PostData;
+    mediaNodeId: string;
+    format: { id: string; width: number; height: number };
+  } | null>(null);
 
   // Keep steps visible briefly after generation completes, then clear
   useEffect(() => {
@@ -240,6 +248,55 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       setAiEditState(null);
     }
   }, [aiEditState]);
+
+  const handleImageOptionSelect = useCallback(
+    (index: number) => {
+      if (!pendingImageOptions) return;
+      const option = pendingImageOptions.options[index];
+      setPendingImageOptions((prev) => prev ? { ...prev, selectedIndex: index } : null);
+
+      // Update the media node with selected image
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === pendingImageOptions.mediaNodeId
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  generated: { url: option.url, type: "image/png" },
+                  description: option.description || "",
+                  updatedAt: new Date().toISOString(),
+                },
+              }
+            : n,
+        ),
+      );
+
+      const pd = pendingImageOptions.postData;
+      addChatImage({
+        url: option.url,
+        description: option.description || "",
+        platform: "",
+        headline: pd.headline,
+        subtitle: pd.subtitle,
+        cta: pd.cta,
+        logo: pd.logo,
+        textStyles: pd.textStyles,
+      });
+
+      // Open in editor
+      openInEditor(
+        option.url,
+        { headline: pd.headline, subtitle: pd.subtitle, cta: pd.cta, textStyles: pd.textStyles, logo: pd.logo },
+        pendingImageOptions.format,
+      );
+
+      // Clear pending options after short delay (keep gallery visible briefly)
+      setTimeout(() => setPendingImageOptions(null), 500);
+      toast.success("Imagem selecionada!");
+    },
+    [pendingImageOptions, setNodes, addChatImage, openInEditor],
+  );
 
   const createProductAd = useCallback(async (sourceFile: File, description: string) => {
     setProductAdState({ status: "removing-bg", error: null });
@@ -630,7 +687,29 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                   providerConfig,
                 }),
               });
-              imageResult = await singleRes.json() as { url: string; type: string; description: string; provider?: string } | { error: string };
+              const rawResult = await singleRes.json();
+
+              // Check if batch response (multiple options)
+              if (rawResult.options && Array.isArray(rawResult.options) && rawResult.options.length > 1) {
+                // Store options for gallery selection
+                setPendingImageOptions({
+                  options: rawResult.options,
+                  selectedIndex: null,
+                  postData: data,
+                  mediaNodeId,
+                  format: { id: primaryFormat.id, width: primaryW, height: primaryH },
+                });
+                updateStep("media-node", "done");
+                updateStep("finalize", "done");
+                toast.info(`${rawResult.options.length} opcoes geradas! Escolha uma abaixo.`);
+                // Don't open editor yet — wait for gallery selection
+                setTimeout(() => fitView({ padding: 0.3, duration: 800 }), 300);
+                setGenerating(false);
+                return; // Exit early — gallery selection will handle the rest
+              }
+
+              // Single result or single option in batch
+              imageResult = rawResult.options?.[0] ?? rawResult;
             }
 
             if ("error" in imageResult) {
@@ -1379,6 +1458,17 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Image options gallery */}
+      {pendingImageOptions && (
+        <div className="px-4 py-3 border-t border-border">
+          <ImageOptionsGallery
+            options={pendingImageOptions.options}
+            selectedIndex={pendingImageOptions.selectedIndex}
+            onSelect={handleImageOptionSelect}
+          />
         </div>
       )}
 
