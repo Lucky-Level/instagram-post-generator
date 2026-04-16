@@ -261,11 +261,10 @@ O JSON DEVE estar dentro das tags <post-data>...</post-data>. Sem as tags o sist
 
 ### REGRA DE EXECUCAO
 - Leia o ESTADO DO PIPELINE antes de agir
-- Encontre o PRIMEIRO node com status "pending" e execute-o
-- Cada resposta atualiza UM node (status vai pra "done" via approve ou dados via update)
-- Se RunMode=auto: avance automaticamente sem perguntar. Execute, aprove, proximo.
-- Se RunMode=manual: pergunte antes de avancar para a PROXIMA ETAPA (dentro da mesma etapa, avance livre)
-- NUNCA pule etapas. NUNCA volte. Sempre avante.
+- Se RunMode=auto: Processe TODAS as etapas mentalmente em UMA UNICA resposta. Descreva brevemente o que decidiu (briefing, copy, layout) e envie UM UNICO <post-data> com pipelineNodeId="visual-prompt-visual" contendo o imagePrompt final. O SISTEMA cuida de gerar a imagem e montar o canvas automaticamente.
+- Se RunMode=manual: avance etapa por etapa, pedindo confirmacao entre etapas.
+- NUNCA envie multiplos <post-data> na mesma resposta. NUNCA envie post-data pra nodes marcados AUTOMATICO.
+- NUNCA invente URLs de imagens. O sistema gera as imagens reais.
 
 ### ETAPAS E NODES (IDs exatos)
 
@@ -293,17 +292,21 @@ O JSON DEVE estar dentro das tags <post-data>...</post-data>. Sem as tags o sist
 - avatar-avatar-final: Aprovar avatar. nodeData: { finalUrl: "...", approved: true }. pipelineAction: "approve"
 
 **VISUAL**
-- visual-prompt-visual: Criar o imagePrompt (FUNDO APENAS, sem texto, 200-400 palavras ingles). Use dados do briefing, copy e layout pra montar o prompt. nodeData: { prompt: "...", negativePrompt: "...", model: "flux-kontext" }
-- visual-gerar-imagens: Gerar imagens. Inclua o imagePrompt no post-data normal tambem pra que o sistema gere. nodeData: { images: [], count: 4 }
-  IMPORTANTE: para ESTE node, inclua TAMBEM "imagePrompt" no root do post-data (fora do nodeData) pra disparar a geracao real de imagem.
-- visual-refinar-imagem: Se preciso, pedir refinamento. nodeData: { selectedIndex: 0, refinedUrl: null }
-- visual-visual-final: Aprovar visual. nodeData: { finalUrl: "...", approved: true }. pipelineAction: "approve"
+- visual-prompt-visual: Criar o imagePrompt (FUNDO APENAS, sem texto, 200-400 palavras INGLES). Use dados do briefing, copy e layout pra montar o prompt. pipelineAction: "approve". nodeData DEVE conter:
+  { prompt: "the full image prompt in english...", headline: "texto principal", subtitle: "subtitulo", cta: "call to action" }
+  IMPORTANTE: Inclua headline/subtitle/cta no nodeData — o sistema usa pra montar o post completo.
+  Quando voce aprovar este node, o SISTEMA gera a imagem, abre o editor e monta o post automaticamente. Voce NAO precisa preencher nenhum outro node depois deste.
+- visual-gerar-imagens: AUTOMATICO (preenchido pelo sistema apos gerar imagem). NAO envie post-data pra este node.
+- visual-refinar-imagem: AUTOMATICO. NAO envie post-data pra este node.
+- visual-visual-final: AUTOMATICO. NAO envie post-data pra este node.
+  REGRA: NUNCA invente URLs de imagem (ex: example.com/...). Voce NAO gera imagens. O sistema gera quando voce aprova visual-prompt-visual.
 
 **COMPOSE**
-- compose-aplicar-layout: Montar canvas com texto + imagem. nodeData: { canvasJson: null, applied: true }
-- compose-renderizar: Renderizar preview. nodeData: { previewUrl: null, format: "1080x1080" }
-- compose-ajuste-fino: Ajustes finais. nodeData: { adjustments: {}, iterations: 0 }
-- compose-compose-final: Aprovar composicao. nodeData: { outputUrl: null, approved: true }. pipelineAction: "approve"
+- compose-aplicar-layout: Montar canvas com texto + imagem. nodeData: { applied: true }. pipelineAction: "approve"
+  IMPORTANTE: Quando voce aprovar este node, o SISTEMA abre o editor automaticamente com a imagem gerada + textos. Os proximos nodes sao automaticos.
+- compose-renderizar: AUTOMATICO (preenchido pelo sistema). NAO envie post-data.
+- compose-ajuste-fino: AUTOMATICO. NAO envie post-data.
+- compose-compose-final: AUTOMATICO. NAO envie post-data.
 
 **REVIEW**
 - review-preview-multi: Mostrar preview em diferentes formatos. nodeData: { platforms: ["instagram-feed","stories"], previews: {} }
@@ -312,18 +315,27 @@ O JSON DEVE estar dentro das tags <post-data>...</post-data>. Sem as tags o sist
 - review-salvar-brand: Salvar aprendizados no brand memory. nodeData: { saved: true }. pipelineAction: "approve"
 
 ### EXEMPLO DE FLUXO AUTO
-Usuario: "cria um post pro meu restaurante de sushi"
+Usuario: "cria um post pro meu restaurante de sushi, rodizio 89,90"
 
-Resposta 1: "Entendi! Restaurante de sushi. Deixa eu montar tudo pra voce."
-<post-data>{"pipelineNodeId":"briefing-brand-check","pipelineAction":"approve","nodeData":{"brandId":null,"valid":true}}</post-data>
+Resposta: "Sushi, rodizio! Ja montei tudo:
 
-Resposta 2: "Pesquisei tendencias de food marketing..."
-<post-data>{"pipelineNodeId":"briefing-pesquisa","pipelineAction":"approve","nodeData":{"keywords":["sushi","japanese food","food photography"],"insights":"Close-ups com luz dourada lateral performam 3x mais"}}</post-data>
+Briefing: restaurante japones, promo rodizio, publico jovem urbano
+Copy: 'Rodizio Sushi Ken — sabor sem limites' + sub 'A partir de R$89,90' + CTA 'Reserve agora'
+Visual: close de sushi variado, luz dourada, fundo escuro
 
-...e assim por diante, UM node por resposta, avancando automaticamente.
+Gerando a imagem agora..."
 
-### DICA: Como saber qual node executar
-Olhe o ESTADO DO PIPELINE. O primeiro node com status "pending" e o proximo a executar. Se todos de uma etapa estao "done", passe pra proxima etapa.`;
+<post-data>
+{"pipelineNodeId":"visual-prompt-visual","pipelineAction":"approve","nodeData":{"prompt":"Isometric top-down view of a premium Japanese sushi platter on a dark slate surface. Fresh salmon nigiri, tuna sashimi, and California rolls arranged in an elegant circular pattern. Warm golden side lighting creating rich shadows. Dark moody background with subtle bokeh lights. Steam rising from hot dishes. Professional food photography, high detail, cinematic lighting, shallow depth of field. Clean negative space on the upper portion for text overlay. No text, no typography, no letters, no words.","headline":"Rodizio Sushi Ken","subtitle":"Sabor sem limites — R$89,90","cta":"Reserve agora"}}
+</post-data>
+
+O SISTEMA gera a imagem e abre o editor automaticamente. Voce so precisa enviar ESTE post-data.
+
+### REGRA CRITICA
+- Em modo auto: UMA resposta, UM <post-data> com pipelineNodeId="visual-prompt-visual"
+- NUNCA invente URLs de imagem (example.com, placeholder, etc)
+- NUNCA envie post-data para nodes marcados AUTOMATICO
+- O prompt DEVE ser em INGLES, 200-400 palavras, descrevendo APENAS o fundo visual`;
 
 async function buildSystemPrompt(agentId?: string): Promise<string> {
   if (!agentId) return BASE_SYSTEM_PROMPT;

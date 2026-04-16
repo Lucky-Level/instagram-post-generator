@@ -901,9 +901,27 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             ?? allFormats.find((f) => f.id === "ig-feed-sq")!;
 
           if (pipelineNodeId === "visual-prompt-visual" && (pipelineAction === "approve" || pipelineAction === "update")) {
-            // Visual prompt ready — generate the image
+            // Visual prompt ready — this is the KEY node that triggers everything
             const imagePrompt = (nodeData?.prompt as string) || postData.imagePrompt || "";
             if (imagePrompt) {
+              // Auto-approve all preceding nodes (briefing, copy, layout) that the agent processed mentally
+              const precedingPrefixes = ["briefing-", "copy-", "layout-"];
+              for (const [nid, node] of Object.entries(pipelineState.nodes)) {
+                if (precedingPrefixes.some((p) => nid.startsWith(p)) && node.status === "pending") {
+                  updatePipelineNode({ nodeId: nid, status: "done", data: { ...node.data, approved: true } });
+                }
+              }
+              // Fill copy-copy-final with text data from postData if available
+              if (postData.headline || (nodeData as Record<string, unknown>)?.headline) {
+                updatePipelineNode({ nodeId: "copy-copy-final", status: "done", data: {
+                  headline: (nodeData as Record<string, unknown>)?.headline as string || postData.headline || "",
+                  subtitle: (nodeData as Record<string, unknown>)?.subtitle as string || postData.subtitle || "",
+                  cta: (nodeData as Record<string, unknown>)?.cta as string || postData.cta || "",
+                  caption: (nodeData as Record<string, unknown>)?.caption as string || postData.legenda || "",
+                  approved: true,
+                }});
+              }
+
               toast.info("Gerando imagem...");
               activeMsgIdRef.current = message.id;
               try {
@@ -924,59 +942,46 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 if (!result.error) {
                   const imgUrl = result.options?.[0]?.url ?? result.url;
                   const imgDesc = result.options?.[0]?.description ?? result.description ?? imagePrompt;
-                  // Store generated image URL in visual nodes
+                  // Auto-complete all visual + compose + review nodes
                   updatePipelineNode({ nodeId: "visual-gerar-imagens", status: "done", data: { images: [imgUrl], count: 1 } });
+                  updatePipelineNode({ nodeId: "visual-refinar-imagem", status: "done", data: { selectedIndex: 0 } });
                   updatePipelineNode({ nodeId: "visual-visual-final", status: "done", data: { finalUrl: imgUrl, approved: true } });
-                  addChatImage({ url: imgUrl, description: imgDesc, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: postData.headline, subtitle: postData.subtitle, cta: postData.cta, logo: postData.logo, textStyles: postData.textStyles });
-                  toast.success("Imagem gerada!");
+                  updatePipelineNode({ nodeId: "compose-aplicar-layout", status: "done", data: { applied: true } });
+                  updatePipelineNode({ nodeId: "compose-renderizar", status: "done", data: { format: `${primaryFormat.width}x${primaryFormat.height}` } });
+                  updatePipelineNode({ nodeId: "compose-ajuste-fino", status: "done", data: { iterations: 0 } });
+                  updatePipelineNode({ nodeId: "compose-compose-final", status: "done", data: { approved: true } });
+                  // Auto-complete review nodes
+                  for (const [nid, node] of Object.entries(pipelineState.nodes)) {
+                    if (nid.startsWith("review-") && node.status === "pending") {
+                      updatePipelineNode({ nodeId: nid, status: "done", data: { approved: true } });
+                    }
+                  }
+
+                  // Get text from copy-copy-final
+                  const copyFinal = pipelineState.nodes["copy-copy-final"];
+                  const headline = (copyFinal?.data?.headline as string) || (nodeData as Record<string, unknown>)?.headline as string || postData.headline || "";
+                  const subtitle = (copyFinal?.data?.subtitle as string) || (nodeData as Record<string, unknown>)?.subtitle as string || postData.subtitle;
+                  const cta = (copyFinal?.data?.cta as string) || (nodeData as Record<string, unknown>)?.cta as string || postData.cta;
+
+                  addChatImage({ url: imgUrl, description: imgDesc, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline, subtitle, cta, logo: postData.logo, textStyles: postData.textStyles });
+                  // Open editor with everything
+                  openInEditor(imgUrl, { headline, subtitle, cta, textStyles: postData.textStyles, logo: postData.logo }, { id: primaryFormat.id, width: primaryFormat.width, height: primaryFormat.height });
+                  toast.success("Post criado! Editor aberto.");
                 } else {
                   updatePipelineNode({ nodeId: "visual-gerar-imagens", status: "error", data: { error: result.error } });
                   toast.error(`Erro na imagem: ${result.error}`);
                 }
               } catch (err) {
-                toast.error("Erro ao gerar imagem");
+                console.error("[pipeline] Image generation error:", err);
+                updatePipelineNode({ nodeId: "visual-gerar-imagens", status: "error", data: { error: String(err) } });
+                toast.error("Erro ao gerar imagem. Verifique as API keys nas configurações.");
               }
               activeMsgIdRef.current = null;
             }
           }
 
-          if (pipelineNodeId === "compose-aplicar-layout" && (pipelineAction === "approve" || pipelineAction === "update")) {
-            // Compose stage — open editor with image + texts
-            const visualFinal = pipelineState.nodes["visual-visual-final"];
-            const copyFinal = pipelineState.nodes["copy-copy-final"];
-            const imgUrl = (visualFinal?.data?.finalUrl as string) || "";
-            if (imgUrl) {
-              openInEditor(
-                imgUrl,
-                {
-                  headline: (copyFinal?.data?.headline as string) || postData.headline || "",
-                  subtitle: (copyFinal?.data?.subtitle as string) || postData.subtitle,
-                  cta: (copyFinal?.data?.cta as string) || postData.cta,
-                  textStyles: postData.textStyles,
-                  logo: postData.logo,
-                },
-                { id: primaryFormat.id, width: primaryFormat.width, height: primaryFormat.height }
-              );
-              toast.success("Editor aberto com o post!");
-              // Auto-approve remaining compose + review nodes
-              updatePipelineNode({ nodeId: "compose-renderizar", status: "done", data: { format: `${primaryFormat.width}x${primaryFormat.height}` } });
-              updatePipelineNode({ nodeId: "compose-ajuste-fino", status: "done", data: { iterations: 0 } });
-              updatePipelineNode({ nodeId: "compose-compose-final", status: "done", data: { approved: true } });
-            }
-          }
-
-          // Auto-advance: if auto mode and still pending nodes, send follow-up
-          if (pipelineRunMode === "auto") {
-            const allNodes = Object.values(pipelineState.nodes);
-            const hasPending = allNodes.some((n) => n.status === "pending");
-            if (hasPending) {
-              // Longer delay for image generation nodes (they take time)
-              const delay = pipelineNodeId.startsWith("visual-") ? 3000 : 1500;
-              setTimeout(() => {
-                sendMessageRef.current({ text: "[pipeline: continuar proxima etapa]" });
-              }, delay);
-            }
-          }
+          // Auto-advance ONLY after compose opens the editor (pipeline done)
+          // No more aggressive auto-advance — agent handles flow in a single response
           return;
         }
 
@@ -994,13 +999,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           if (postData.headline) {
             updatePipelineNode({ nodeId: "copy-gerar-textos", status: "done", data: { headline: postData.headline, cta: postData.cta ?? "", variants: [postData.headline], selected: 0 } });
           }
-          toast.success("Pipeline criado! O agente vai executar etapa por etapa.");
-          // Auto-advance: trigger agent to start executing the pipeline
-          if (pipelineRunMode === "auto") {
-            setTimeout(() => {
-              sendMessageRef.current({ text: "[pipeline: iniciar execucao automatica]" });
-            }, 2000);
-          }
+          toast.success("Pipeline criado!");
           return;
         }
 
