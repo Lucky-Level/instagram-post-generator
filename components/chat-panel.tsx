@@ -893,14 +893,88 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               updatePipelineNode({ nodeId: pipelineNodeId, status: "skipped" });
               break;
           }
+
+          // === PIPELINE EXECUTION ENGINE ===
+          // Trigger real actions based on which node was updated
+          const allFormats = getPlatformFormats();
+          const primaryFormat = allFormats.find((f) => f.id === selectedFormats[0])
+            ?? allFormats.find((f) => f.id === "ig-feed-sq")!;
+
+          if (pipelineNodeId === "visual-prompt-visual" && (pipelineAction === "approve" || pipelineAction === "update")) {
+            // Visual prompt ready — generate the image
+            const imagePrompt = (nodeData?.prompt as string) || postData.imagePrompt || "";
+            if (imagePrompt) {
+              toast.info("Gerando imagem...");
+              activeMsgIdRef.current = message.id;
+              try {
+                const refs = referenceImagesRef.current;
+                const genRes = await fetch("/api/generate-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    prompt: imagePrompt,
+                    referenceImages: refs.length > 0 ? refs : undefined,
+                    aspectRatio: toFluxAspectRatio(primaryFormat.aspect_ratio),
+                    targetWidth: primaryFormat.width,
+                    targetHeight: primaryFormat.height,
+                    providerConfig,
+                  }),
+                });
+                const result = await genRes.json();
+                if (!result.error) {
+                  const imgUrl = result.options?.[0]?.url ?? result.url;
+                  const imgDesc = result.options?.[0]?.description ?? result.description ?? imagePrompt;
+                  // Store generated image URL in visual nodes
+                  updatePipelineNode({ nodeId: "visual-gerar-imagens", status: "done", data: { images: [imgUrl], count: 1 } });
+                  updatePipelineNode({ nodeId: "visual-visual-final", status: "done", data: { finalUrl: imgUrl, approved: true } });
+                  addChatImage({ url: imgUrl, description: imgDesc, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: postData.headline, subtitle: postData.subtitle, cta: postData.cta, logo: postData.logo, textStyles: postData.textStyles });
+                  toast.success("Imagem gerada!");
+                } else {
+                  updatePipelineNode({ nodeId: "visual-gerar-imagens", status: "error", data: { error: result.error } });
+                  toast.error(`Erro na imagem: ${result.error}`);
+                }
+              } catch (err) {
+                toast.error("Erro ao gerar imagem");
+              }
+              activeMsgIdRef.current = null;
+            }
+          }
+
+          if (pipelineNodeId === "compose-aplicar-layout" && (pipelineAction === "approve" || pipelineAction === "update")) {
+            // Compose stage — open editor with image + texts
+            const visualFinal = pipelineState.nodes["visual-visual-final"];
+            const copyFinal = pipelineState.nodes["copy-copy-final"];
+            const imgUrl = (visualFinal?.data?.finalUrl as string) || "";
+            if (imgUrl) {
+              openInEditor(
+                imgUrl,
+                {
+                  headline: (copyFinal?.data?.headline as string) || postData.headline || "",
+                  subtitle: (copyFinal?.data?.subtitle as string) || postData.subtitle,
+                  cta: (copyFinal?.data?.cta as string) || postData.cta,
+                  textStyles: postData.textStyles,
+                  logo: postData.logo,
+                },
+                { id: primaryFormat.id, width: primaryFormat.width, height: primaryFormat.height }
+              );
+              toast.success("Editor aberto com o post!");
+              // Auto-approve remaining compose + review nodes
+              updatePipelineNode({ nodeId: "compose-renderizar", status: "done", data: { format: `${primaryFormat.width}x${primaryFormat.height}` } });
+              updatePipelineNode({ nodeId: "compose-ajuste-fino", status: "done", data: { iterations: 0 } });
+              updatePipelineNode({ nodeId: "compose-compose-final", status: "done", data: { approved: true } });
+            }
+          }
+
           // Auto-advance: if auto mode and still pending nodes, send follow-up
           if (pipelineRunMode === "auto") {
             const allNodes = Object.values(pipelineState.nodes);
             const hasPending = allNodes.some((n) => n.status === "pending");
             if (hasPending) {
+              // Longer delay for image generation nodes (they take time)
+              const delay = pipelineNodeId.startsWith("visual-") ? 3000 : 1500;
               setTimeout(() => {
                 sendMessageRef.current({ text: "[pipeline: continuar proxima etapa]" });
-              }, 1500);
+              }, delay);
             }
           }
           return;
