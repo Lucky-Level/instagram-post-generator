@@ -867,6 +867,30 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           return;
         }
 
+        // Handle pipeline node updates from agent
+        if (postData.pipelineNodeId && postData.pipelineAction && pipelineState) {
+          const { pipelineNodeId, pipelineAction, nodeData } = postData;
+
+          switch (pipelineAction) {
+            case "update":
+              updatePipelineNode({ nodeId: pipelineNodeId, data: nodeData ?? {} });
+              break;
+            case "approve":
+              updatePipelineNode({
+                nodeId: pipelineNodeId,
+                status: "done",
+                data: { ...(nodeData ?? {}), approved: true },
+              });
+              break;
+            case "reject":
+              updatePipelineNode({ nodeId: pipelineNodeId, status: "error", data: nodeData ?? {} });
+              break;
+            case "skip":
+              updatePipelineNode({ nodeId: pipelineNodeId, status: "skipped" });
+              break;
+          }
+        }
+
         activeMsgIdRef.current = message.id;
         await createPipeline(postData);
         activeMsgIdRef.current = null;

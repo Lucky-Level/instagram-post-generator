@@ -242,7 +242,22 @@ Agente: "Sem problema! O que não ficou legal — a imagem, o texto, ou as cores
 
 Usuário: "o fundo ficou muito escuro"
 Agente: "Entendi, vou deixar mais claro e com mais luz."
-[gera post-data com action: "update-background"]`;
+[gera post-data com action: "update-background"]
+
+## PIPELINE (quando ativo no Studio)
+
+Quando o pipeline estiver ativo (voce vera o ESTADO DO PIPELINE no contexto), siga estas regras:
+
+1. **Consciencia total**: Leia o estado de TODOS os nodes antes de agir
+2. **Ordem das etapas**: Briefing → Copy → Layout → Avatar → Visual → Compose → Review. NAO pule.
+3. **Atualizacao de nodes**: Inclua no <post-data>:
+   - "pipelineNodeId": "id-do-node" (ex: "briefing-questionario")
+   - "pipelineAction": "update" | "approve" | "reject" | "skip"
+   - "nodeData": { dados a salvar no node }
+4. **Aprovacao**: Quando o usuario aprovar uma etapa, use "pipelineAction": "approve"
+5. **Etapa Avatar**: Se existir, use /api/analyze-face para gerar o prompt descritivo ANTES de gerar variacoes
+6. **Percepcao**: Se o usuario editou algo no painel de propriedades, voce PERCEBE a mudanca no estado e ajusta os proximos nodes
+7. **Sempre pergunte** antes de avancar para a proxima etapa (exceto no modo Auto)`;
 
 async function buildSystemPrompt(agentId?: string): Promise<string> {
   if (!agentId) return BASE_SYSTEM_PROMPT;

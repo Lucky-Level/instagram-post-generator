@@ -52,6 +52,9 @@ export const PostDataSchema = z.object({
       }),
     )
     .optional(),
+  pipelineNodeId: z.string().optional(),
+  pipelineAction: z.enum(["update", "approve", "reject", "skip"]).optional(),
+  nodeData: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type PostData = z.infer<typeof PostDataSchema>;
