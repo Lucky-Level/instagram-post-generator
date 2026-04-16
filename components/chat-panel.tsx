@@ -34,7 +34,8 @@ import { toast } from "sonner";
 import { useAtom } from "jotai";
 import { useAtomValue } from "jotai";
 import { editorHandleAtom, editorOpenAtom, editorSessionAtom } from "@/lib/editor-state";
-import { generateImageAction } from "@/app/actions/image/create";
+import { providerConfigAtom } from "@/lib/provider-config";
+// generateImageAction kept in create.ts for other consumers; chat-panel uses /api/generate-image route
 import { editWithFlux } from "@/app/actions/image/edit-with-flux";
 import { templates, type Template } from "@/lib/templates";
 import { cn } from "@/lib/utils";
@@ -128,6 +129,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const [editorOpen, setEditorOpen] = useAtom(editorOpenAtom);
   const [, setEditorSession] = useAtom(editorSessionAtom);
   const editorHandle = useAtomValue(editorHandleAtom);
+  const providerConfig = useAtomValue(providerConfigAtom);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["ig-feed-sq"]);
   const [showPlatforms, setShowPlatforms] = useState(false);
   const [productAdState, setProductAdState] = useState<{
@@ -464,14 +466,19 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               scrollToPosition(600, 50 + i * 300);
 
               const refs = referenceImagesRef.current;
-              const result = await generateImageAction({
-                prompt: slides[i].imagePrompt ?? "",
-                modelId: "gemini",
-                referenceImages: refs.length > 0 ? refs : undefined,
-                aspectRatio: primaryAspectRatio,
-                targetWidth: primaryW,
-                targetHeight: primaryH,
+              const genRes = await fetch("/api/generate-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: slides[i].imagePrompt ?? "",
+                  referenceImages: refs.length > 0 ? refs : undefined,
+                  aspectRatio: primaryAspectRatio,
+                  targetWidth: primaryW,
+                  targetHeight: primaryH,
+                  providerConfig,
+                }),
               });
+              const result = await genRes.json() as { url: string; type: string; description: string; provider?: string } | { error: string };
 
               if (!("error" in result)) {
                 const nodeId = imageNodeIds[i];
@@ -611,14 +618,19 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 : { error: editData.error };
             } else {
               toast.info(refs.length > 0 ? "Gerando com referencias..." : "Gerando imagem...");
-              imageResult = await generateImageAction({
-                prompt: data.imagePrompt,
-                modelId: "gemini",
-                referenceImages: refs.length > 0 ? refs : undefined,
-                aspectRatio: primaryAspectRatio,
-                targetWidth: primaryW,
-                targetHeight: primaryH,
+              const singleRes = await fetch("/api/generate-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: data.imagePrompt,
+                  referenceImages: refs.length > 0 ? refs : undefined,
+                  aspectRatio: primaryAspectRatio,
+                  targetWidth: primaryW,
+                  targetHeight: primaryH,
+                  providerConfig,
+                }),
               });
+              imageResult = await singleRes.json() as { url: string; type: string; description: string; provider?: string } | { error: string };
             }
 
             if ("error" in imageResult) {
@@ -697,7 +709,15 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             case "update-background": {
               if (postData.imagePrompt) {
                 toast.info("Gerando novo fundo...");
-                const result = await generateImageAction({ prompt: postData.imagePrompt, modelId: "gemini" });
+                const bgRes = await fetch("/api/generate-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    prompt: postData.imagePrompt,
+                    providerConfig,
+                  }),
+                });
+                const result = await bgRes.json() as { url: string; type: string; description: string; provider?: string } | { error: string };
                 if (!("error" in result)) {
                   await editorHandle.setBackground(result.url);
                   toast.success("Fundo atualizado!");
