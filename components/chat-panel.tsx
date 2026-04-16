@@ -985,26 +985,114 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
           return;
         }
 
-        // Studio mode: auto-create pipeline if not active yet, skip old flow
+        // Studio mode: auto-create pipeline if not active yet
         if (!fullscreen && !pipelineState && postData.action !== "update-text" && postData.action !== "update-background" && postData.action !== "add-element" && postData.action !== "apply-style") {
-          // Auto-init pipeline (with avatar if the agent mentioned an avatar)
           const hasAvatar = !!(postData.imagePrompt && /avatar|person|face|rosto|pessoa/i.test(postData.imagePrompt));
           createPipelineAction({ includeAvatar: hasAvatar, runMode: pipelineRunMode });
-          // Pre-fill briefing from postData
-          const briefingData: Record<string, unknown> = {};
-          if (postData.headline) briefingData.tema = postData.headline;
-          if (postData.imagePrompt) briefingData.summary = postData.imagePrompt;
-          updatePipelineNode({ nodeId: "briefing-briefing-final", status: "done", data: { ...briefingData, approved: true } });
-          // Pre-fill copy if available
-          if (postData.headline) {
-            updatePipelineNode({ nodeId: "copy-gerar-textos", status: "done", data: { headline: postData.headline, cta: postData.cta ?? "", variants: [postData.headline], selected: 0 } });
+
+          // If we have an imagePrompt, generate immediately (don't just create empty pipeline)
+          if (postData.imagePrompt) {
+            // Auto-approve all nodes and generate
+            const allFormats = getPlatformFormats();
+            const primaryFormat = allFormats.find((f) => f.id === selectedFormats[0])
+              ?? allFormats.find((f) => f.id === "ig-feed-sq")!;
+            toast.info("Gerando imagem...");
+            activeMsgIdRef.current = message.id;
+            try {
+              const refs = referenceImagesRef.current;
+              const genRes = await fetch("/api/generate-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: postData.imagePrompt,
+                  referenceImages: refs.length > 0 ? refs : undefined,
+                  aspectRatio: toFluxAspectRatio(primaryFormat.aspect_ratio),
+                  targetWidth: primaryFormat.width,
+                  targetHeight: primaryFormat.height,
+                  providerConfig,
+                }),
+              });
+              const result = await genRes.json();
+              if (!result.error) {
+                const imgUrl = result.options?.[0]?.url ?? result.url;
+                const imgDesc = result.options?.[0]?.description ?? result.description ?? postData.imagePrompt;
+                addChatImage({ url: imgUrl, description: imgDesc, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: postData.headline, subtitle: postData.subtitle, cta: postData.cta, logo: postData.logo, textStyles: postData.textStyles });
+                openInEditor(imgUrl, { headline: postData.headline || "", subtitle: postData.subtitle, cta: postData.cta, textStyles: postData.textStyles, logo: postData.logo }, { id: primaryFormat.id, width: primaryFormat.width, height: primaryFormat.height });
+                toast.success("Post criado! Editor aberto.");
+              } else {
+                toast.error(`Erro na imagem: ${result.error}`);
+              }
+            } catch (err) {
+              console.error("[pipeline] Image generation error:", err);
+              toast.error("Erro ao gerar imagem.");
+            }
+            activeMsgIdRef.current = null;
+          } else {
+            toast.success("Pipeline criado!");
           }
-          toast.success("Pipeline criado!");
           return;
         }
 
-        // Pipeline already active in Studio: agent should use pipelineAction, skip old flow
+        // Pipeline active in Studio but agent sent normal post-data (no pipelineNodeId)
+        // Treat as visual-prompt-visual: use imagePrompt to generate image + open editor
         if (!fullscreen && pipelineState) {
+          const imagePrompt = postData.imagePrompt || "";
+          if (imagePrompt) {
+            // Auto-approve all preceding nodes
+            for (const [nid, node] of Object.entries(pipelineState.nodes)) {
+              if ((nid.startsWith("briefing-") || nid.startsWith("copy-") || nid.startsWith("layout-")) && node.status === "pending") {
+                updatePipelineNode({ nodeId: nid, status: "done", data: { ...node.data, approved: true } });
+              }
+            }
+            // Fill copy data
+            updatePipelineNode({ nodeId: "copy-copy-final", status: "done", data: {
+              headline: postData.headline || "", subtitle: postData.subtitle || "", cta: postData.cta || "",
+              caption: postData.legenda || "", approved: true,
+            }});
+            updatePipelineNode({ nodeId: "visual-prompt-visual", status: "done", data: { prompt: imagePrompt, approved: true } });
+
+            // Generate image
+            const allFormats = getPlatformFormats();
+            const primaryFormat = allFormats.find((f) => f.id === selectedFormats[0])
+              ?? allFormats.find((f) => f.id === "ig-feed-sq")!;
+            toast.info("Gerando imagem...");
+            activeMsgIdRef.current = message.id;
+            try {
+              const refs = referenceImagesRef.current;
+              const genRes = await fetch("/api/generate-image", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: imagePrompt,
+                  referenceImages: refs.length > 0 ? refs : undefined,
+                  aspectRatio: toFluxAspectRatio(primaryFormat.aspect_ratio),
+                  targetWidth: primaryFormat.width,
+                  targetHeight: primaryFormat.height,
+                  providerConfig,
+                }),
+              });
+              const result = await genRes.json();
+              if (!result.error) {
+                const imgUrl = result.options?.[0]?.url ?? result.url;
+                const imgDesc = result.options?.[0]?.description ?? result.description ?? imagePrompt;
+                // Auto-complete all remaining pipeline nodes
+                for (const [nid, node] of Object.entries(pipelineState.nodes)) {
+                  if (node.status === "pending") {
+                    updatePipelineNode({ nodeId: nid, status: "done", data: { ...node.data, approved: true } });
+                  }
+                }
+                addChatImage({ url: imgUrl, description: imgDesc, platform: `${primaryFormat.platform} — ${primaryFormat.format_name}`, headline: postData.headline, subtitle: postData.subtitle, cta: postData.cta, logo: postData.logo, textStyles: postData.textStyles });
+                openInEditor(imgUrl, { headline: postData.headline || "", subtitle: postData.subtitle, cta: postData.cta, textStyles: postData.textStyles, logo: postData.logo }, { id: primaryFormat.id, width: primaryFormat.width, height: primaryFormat.height });
+                toast.success("Post criado! Editor aberto.");
+              } else {
+                toast.error(`Erro na imagem: ${result.error}`);
+              }
+            } catch (err) {
+              console.error("[pipeline] Image generation error:", err);
+              toast.error("Erro ao gerar imagem.");
+            }
+            activeMsgIdRef.current = null;
+          }
           return;
         }
 
