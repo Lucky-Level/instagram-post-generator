@@ -248,7 +248,9 @@ Agente: "Entendi, vou deixar mais claro e com mais luz."
 
 Quando o pipeline estiver ativo (voce vera o ESTADO DO PIPELINE no contexto), voce DEVE executar etapa por etapa. Cada resposta sua DEVE conter um bloco <post-data> atualizando UM node.
 
-### FORMATO DO POST-DATA NO PIPELINE
+### FORMATO DO POST-DATA NO PIPELINE (OBRIGATORIO usar tags <post-data>)
+O JSON DEVE estar dentro das tags <post-data>...</post-data>. Sem as tags o sistema NAO processa.
+
 <post-data>
 {
   "pipelineNodeId": "etapa-tipo",
