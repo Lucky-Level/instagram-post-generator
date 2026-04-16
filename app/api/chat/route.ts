@@ -104,16 +104,33 @@ Quando o usuário aprovar o briefing, gere o bloco JSON no final da resposta.
   "textStyles": {
     "headline": {
       "fontFamily": "Bebas Neue",
-      "strokeWidth": 3,
+      "fontSize": 96,
+      "fontWeight": "normal",
+      "fill": "#FFFFFF",
+      "strokeWidth": 5,
       "stroke": "#000000",
+      "shadowColor": "rgba(0,0,0,0.9)",
       "shadowBlur": 0,
-      "shadowOffsetX": 5,
-      "shadowOffsetY": 5,
-      "charSpacing": -20
+      "shadowOffsetX": 6,
+      "shadowOffsetY": 6,
+      "charSpacing": -20,
+      "lineHeight": 1.1
     },
     "subtitle": {
-      "fontFamily": "Inter",
-      "charSpacing": 50
+      "fontFamily": "Space Grotesk",
+      "fontSize": 36,
+      "fontWeight": "normal",
+      "fill": "#F5F5F5",
+      "strokeWidth": 0,
+      "charSpacing": 80,
+      "opacity": 0.9
+    },
+    "cta": {
+      "fontFamily": "DM Sans",
+      "fontSize": 28,
+      "fontWeight": "bold",
+      "fill": "#FFD700",
+      "charSpacing": 100
     }
   },
   "logo": {
@@ -124,13 +141,55 @@ Quando o usuário aprovar o briefing, gere o bloco JSON no final da resposta.
 }
 </post-data>
 
-### Regras dos textStyles:
-- Incluir sempre que tiver contexto de identidade visual (brand_kit ou referencias)
-- fontFamily DEVE ser uma das fontes disponíveis: Inter, Roboto, Open Sans, Poppins, Montserrat, DM Sans, Space Grotesk, Nunito, Raleway, Rubik, Barlow, Outfit, Plus Jakarta Sans, Playfair Display, Lora, Merriweather, Cormorant Garamond, EB Garamond, DM Serif Display, Bebas Neue, Anton, Oswald, Archivo Black, Black Ops One, Dela Gothic One, Boogaloo, Righteous, Baloo 2, Fredoka, Alfa Slab One, Permanent Marker, Pacifico, Lobster, Dancing Script, Satisfy, Caveat, Great Vibes, JetBrains Mono, Fira Code, Source Code Pro
-- strokeWidth: 0 = sem contorno, 1-5 = contorno sutil, 6-15 = contorno forte
-- shadowBlur: 0 = sombra dura (vintage/impacto), 8-15 = sombra suave (moderno/elegante)
-- charSpacing: negativo = comprimido (display pesado), positivo = espaçado (minimalista/elegante)
-- Se não souber o estilo da marca, omitir textStyles (o usuário vai ajustar no editor)
+### TIPOGRAFIA — REGRA OBRIGATORIA
+
+Voce DEVE SEMPRE incluir textStyles completos no post-data. NUNCA omitir. Um post sem textStyles sai generico e feio. Voce e um diretor de arte — a tipografia e 50% do impacto visual.
+
+#### Como escolher a tipografia:
+
+**1. Analise a vibe do post** — cada combinacao de fonte + efeito cria uma personalidade:
+
+IMPACTO/PODER (barbearia, gym, streetwear, promo agressiva):
+  headline: Bebas Neue, Anton, Archivo Black ou Black Ops One | fontSize 80-120 | stroke grosso (#000, width 4-8) | shadow dura (blur 0, offset 5-8) | charSpacing -30 a -10
+  subtitle: Space Grotesk ou Barlow | fontSize 32-42 | sem stroke | charSpacing 50-100
+
+ELEGANTE/PREMIUM (joalheria, restaurante fine, moda, spa):
+  headline: Playfair Display, Cormorant Garamond ou DM Serif Display | fontSize 64-80 | SEM stroke | shadow suave (blur 12-20, offset 0) | charSpacing 80-200
+  subtitle: Raleway ou Plus Jakarta Sans | fontSize 28-36 | charSpacing 150-300 | opacity 0.85
+
+MODERNO/TECH (startup, SaaS, fintech, inovacao):
+  headline: Space Grotesk, Outfit ou DM Sans | fontSize 64-80 | fontWeight bold | SEM stroke, SEM shadow | charSpacing -10 a 0
+  subtitle: Inter ou Rubik | fontSize 28-36 | fontWeight normal | charSpacing 30-80
+
+DIVERTIDO/CASUAL (comida, pet, infantil, festas):
+  headline: Fredoka, Boogaloo, Baloo 2 ou Righteous | fontSize 72-96 | stroke colorido (cor da marca, width 3-5) | shadow (blur 0, offset 4) | charSpacing 0
+  subtitle: Nunito ou Poppins | fontSize 32-40 | fontWeight normal
+
+ARTESANAL/ORGANICO (cafe, padaria, floricultura, handmade):
+  headline: Pacifico, Lobster, Satisfy ou Caveat | fontSize 72-96 | SEM stroke | shadow suave (blur 8-12) | charSpacing 0
+  subtitle: Lora ou Merriweather | fontSize 28-36 | fontStyle italic | charSpacing 30
+
+VINTAGE/RETRO (bar, vinhos, rock, tattoo):
+  headline: Alfa Slab One, Permanent Marker ou Dela Gothic One | fontSize 80-100 | stroke (#000, width 2-4) | shadow dura (blur 0, offset 6-8) | charSpacing 60-150
+  subtitle: Oswald | fontSize 32-42 | charSpacing 200-400 | fontWeight normal
+
+**2. Contraste de hierarquia** — headline e subtitle DEVEM ser fontes diferentes. Se headline e display pesada, subtitle e sans-serif leve. Se headline e serif elegante, subtitle e sans-serif minimalista.
+
+**3. Cores do texto** — NUNCA branco puro (#FFFFFF) sem efeito. Sempre adicione pelo menos UM:
+  - stroke (contorno escuro pra contraste)
+  - shadow (sombra pra destacar do fundo)
+  - fill com cor da marca (usar cores do brand_kit)
+  Excecao: fundo escuro uniforme pode usar branco com shadow suave.
+
+**4. Se o brand_kit define fontes** (heading/body), use-as como base mas ADICIONE os efeitos (stroke, shadow, charSpacing) conforme a vibe do post.
+
+#### Fontes disponiveis:
+Sans-serif: Inter, Roboto, Open Sans, Poppins, Montserrat, DM Sans, Space Grotesk, Nunito, Raleway, Rubik, Barlow, Outfit, Plus Jakarta Sans
+Serif: Playfair Display, Lora, Merriweather, Cormorant Garamond, EB Garamond, DM Serif Display
+Display: Bebas Neue, Anton, Oswald, Archivo Black, Black Ops One, Dela Gothic One, Alfa Slab One
+Fun: Boogaloo, Righteous, Baloo 2, Fredoka, Permanent Marker
+Script: Pacifico, Lobster, Dancing Script, Satisfy, Caveat, Great Vibes
+Mono: JetBrains Mono, Fira Code, Source Code Pro
 
 ### Regras do logo:
 - Incluir campo "logo" APENAS se o brand_kit contiver logo
@@ -384,6 +443,12 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
 - Use as cores da marca nos imagePrompts (inclua os hex codes)
 - Mantenha o tom "${p.tone || "profissional"}" em todas as legendas
 - Adapte a linguagem visual ao público: ${p.audience || "geral"}
+
+### Tipografia da Marca
+- Fonte de titulo da marca: "${fonts.heading || "Inter"}" — use como headline.fontFamily
+- Fonte de corpo da marca: "${fonts.body || "Inter"}" — use como subtitle.fontFamily e cta.fontFamily
+- SEMPRE inclua textStyles completos com efeitos (stroke, shadow, charSpacing) adequados ao tom "${p.tone || "profissional"}"
+- Use as cores da marca como fill ou stroke nos textos: primaria ${colors.primary || "#000"}, secundaria ${colors.secondary || "#FFF"}, destaque ${colors.accent || "#3B82F6"}
 `;
 
     // Load brand memory (feedback + learned rules)
