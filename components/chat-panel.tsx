@@ -1290,12 +1290,21 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => handleQuickReply("Sim, cria!")}
                 className="px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
                 Criar!
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedFormats(["yt-thumb"]);
+                  handleQuickReply("Sim, cria como thumbnail do YouTube!");
+                }}
+                className="px-4 py-2 rounded-full border border-red-500/50 text-xs font-medium text-red-500 hover:bg-red-500/10 transition-colors"
+              >
+                Thumbnail YT
               </button>
               <button
                 onClick={() => handleQuickReply("Quero ajustar algumas coisas")}
