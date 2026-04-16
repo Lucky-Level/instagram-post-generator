@@ -768,16 +768,19 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   }, [createPipelineAction, pipelineRunMode]);
 
   // Sync pipeline Jotai state → ReactFlow canvas nodes/edges
-  // Only rebuild graph when pipeline is created (createdAt changes), not on every node update
+  // Rebuild when pipeline changes (progressive reveal of etapas)
+  const pipelineNodeCount = pipelineState
+    ? Object.values(pipelineState.nodes).filter((n) => n.status !== "pending").length
+    : 0;
   const pipelineCreatedAt = pipelineState?.createdAt;
   useEffect(() => {
-    if (!pipelineState || !pipelineCreatedAt) return;
+    if (!pipelineState) return;
     const { nodes: rfNodes, edges: rfEdges } = buildPipelineGraph(pipelineState);
     setNodes(rfNodes);
     setEdges(rfEdges);
     setTimeout(() => fitView({ padding: 0.2, duration: 500 }), 100);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pipelineCreatedAt, setNodes, setEdges, fitView]);
+  }, [pipelineCreatedAt, pipelineNodeCount, setNodes, setEdges, fitView]);
 
   // Build dynamic headers for chat transport (includes pipeline context when active)
   const pipelineContextHeader = pipelineState ? encodeURIComponent(getPipelineSummary(pipelineState)) : undefined;

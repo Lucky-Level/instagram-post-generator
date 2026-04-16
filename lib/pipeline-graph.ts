@@ -11,22 +11,58 @@ export const ETAPA_GAP_Y = 140;
 
 // --- Graph Builder ---
 
+/**
+ * Determines which etapas should be visible.
+ * Shows: completed etapas + the first etapa that has any pending node.
+ * This creates a progressive reveal as the pipeline advances.
+ */
+function getVisibleEtapas(state: PipelineState): Set<EtapaId> {
+  const visible = new Set<EtapaId>();
+  let foundPending = false;
+
+  for (const etapaId of state.etapaOrder) {
+    const etapaNodes = Object.values(state.nodes).filter((n) => n.etapa === etapaId);
+    const allDone = etapaNodes.every((n) => n.status === "done" || n.status === "skipped");
+    const anyActive = etapaNodes.some((n) => n.status !== "pending");
+
+    if (allDone || anyActive) {
+      visible.add(etapaId);
+    } else if (!foundPending) {
+      // Show the first fully-pending etapa (the "next" one)
+      visible.add(etapaId);
+      foundPending = true;
+    }
+    // Don't show etapas beyond the first pending one
+  }
+
+  // Always show at least the first etapa
+  if (visible.size === 0 && state.etapaOrder.length > 0) {
+    visible.add(state.etapaOrder[0]);
+  }
+
+  return visible;
+}
+
 export function buildPipelineGraph(state: PipelineState): {
   nodes: Node[];
   edges: Edge[];
 } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const visibleEtapas = getVisibleEtapas(state);
 
   // Track last node of previous etapa for cross-etapa edges
   let prevEtapaLastNodeId: string | null = null;
+  let visibleEtapaIndex = 0;
 
-  for (let etapaIndex = 0; etapaIndex < state.etapaOrder.length; etapaIndex++) {
-    const etapaId: EtapaId = state.etapaOrder[etapaIndex];
+  for (const etapaId of state.etapaOrder) {
+    if (!visibleEtapas.has(etapaId)) continue;
+
     const etapaDef = ETAPA_DEFINITIONS.find((e) => e.id === etapaId);
     if (!etapaDef) continue;
 
-    const y = etapaIndex * ETAPA_GAP_Y + 40;
+    const y = visibleEtapaIndex * ETAPA_GAP_Y + 40;
+    visibleEtapaIndex++;
 
     // Get nodes belonging to this etapa, preserving definition order
     const etapaNodes = etapaDef.nodes
