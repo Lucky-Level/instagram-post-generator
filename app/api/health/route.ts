@@ -110,6 +110,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  if (test === "replicate") {
+    try {
+      const Replicate = (await import("replicate")).default;
+      const r = new Replicate({ auth: "test" });
+      return NextResponse.json({ ok: true, replicate: "import OK", type: typeof r });
+    } catch (e) {
+      return NextResponse.json({ ok: false, error: `Replicate import failed: ${(e as Error).message}` });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     debug: { test, url: req.nextUrl.toString() },
