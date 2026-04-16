@@ -309,6 +309,68 @@ export async function POST(req: NextRequest) {
       providerConfig,
     );
 
+    // -----------------------------------------------------------------------
+    // Batch mode: generate N options concurrently
+    // -----------------------------------------------------------------------
+    const numOptions = providerConfig?.numOptions ?? 1;
+
+    if (numOptions > 1 && providers.length > 0) {
+      const provider = providers[0];
+
+      const results = await Promise.allSettled(
+        Array.from({ length: numOptions }, (_, i) => {
+          const variedPrompt =
+            i === 0
+              ? fullPrompt
+              : `${fullPrompt}\n\n(Variation ${i + 1}: explore a slightly different composition, camera angle, or color mood while keeping the same concept and subject)`;
+
+          const variedProviders = buildProviderChain(
+            variedPrompt,
+            referenceImages,
+            aspectRatio,
+            targetWidth,
+            targetHeight,
+            providerConfig,
+          );
+
+          return variedProviders[0].fn().then((url) => ({
+            url,
+            type: "image/png" as const,
+            description: prompt.slice(0, 200),
+            provider: provider.name,
+            variationIndex: i,
+          }));
+        }),
+      );
+
+      const successes = results
+        .filter(
+          (r): r is PromiseFulfilledResult<{
+            url: string;
+            type: "image/png";
+            description: string;
+            provider: string;
+            variationIndex: number;
+          }> => r.status === "fulfilled",
+        )
+        .map((r) => r.value);
+
+      if (successes.length === 0) {
+        const batchErrors = results
+          .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+          .map((r) => String(r.reason));
+        return NextResponse.json(
+          { error: `All ${numOptions} options failed:\n${batchErrors.join("\n")}` },
+          { status: 502 },
+        );
+      }
+
+      return NextResponse.json({ options: successes });
+    }
+
+    // -----------------------------------------------------------------------
+    // Single-image mode (default): try providers sequentially with fallback
+    // -----------------------------------------------------------------------
     const errors: string[] = [];
 
     for (const provider of providers) {
