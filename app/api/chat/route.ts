@@ -377,6 +377,24 @@ ${p.never_do_this?.length ? `- NUNCA: ${p.never_do_this.join(", ")}` : ""}
       }
     }
 
+    // Load avatars for this brand agent
+    const { data: avatarsData } = await db
+      .from("avatars")
+      .select("id, name, role")
+      .eq("brand_agent_id", agentId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (avatarsData?.length) {
+      brandContext += `\n\n## AVATARES DISPONIVEIS\n`;
+      brandContext += `A marca tem ${avatarsData.length} avatar(es) cadastrado(s) com fotos de referencia:\n`;
+      for (const av of avatarsData) {
+        brandContext += `- ${av.name} (${av.role}) -- ID: ${av.id}\n`;
+      }
+      brandContext += `\nQuando o usuario mencionar uma pessoa ou pedir post com alguem, sugira usar um dos avatares acima para manter consistencia facial.\n`;
+      brandContext += `Inclua o campo "avatarId" no post-data quando usar um avatar.\n`;
+    }
+
     return BASE_SYSTEM_PROMPT + brandContext;
   } catch {
     return BASE_SYSTEM_PROMPT;

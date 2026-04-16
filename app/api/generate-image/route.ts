@@ -279,6 +279,7 @@ interface RequestBody {
   providerConfig?: ProviderConfig;
   sourceImageUrl?: string;
   action?: string;
+  avatarId?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -302,9 +303,33 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .join("\n");
 
+    // Resolve avatar face image if avatarId provided
+    let avatarFaceUrl: string | undefined;
+    if (body.avatarId) {
+      try {
+        const { createServerClient } = await import("@/lib/supabase-server");
+        const db = await createServerClient();
+        const { data: avatar } = await db
+          .from("avatars")
+          .select("face_image_url")
+          .eq("id", body.avatarId)
+          .single();
+        if (avatar?.face_image_url) {
+          avatarFaceUrl = avatar.face_image_url;
+        }
+      } catch (e) {
+        console.log(`[generate-image] Avatar lookup failed: ${(e as Error).message}`);
+      }
+    }
+
+    // Merge avatar face into reference images
+    const effectiveReferenceImages = avatarFaceUrl
+      ? [avatarFaceUrl, ...(referenceImages ?? [])]
+      : referenceImages;
+
     const providers = buildProviderChain(
       fullPrompt,
-      referenceImages,
+      effectiveReferenceImages,
       aspectRatio,
       targetWidth,
       targetHeight,
@@ -319,10 +344,15 @@ export async function POST(req: NextRequest) {
       const replicateKey = userKeys.replicate || process.env.REPLICATE_API_TOKEN || "";
       const googleKey = userKeys.google || process.env.GOOGLE_GENERATIVE_AI_API_KEY || "";
 
+      // Build refine reference list (avatar face + source image)
+      const refineRefs = avatarFaceUrl
+        ? [avatarFaceUrl, body.sourceImageUrl]
+        : [body.sourceImageUrl];
+
       // Prefer FLUX Kontext for img2img (best at preserving composition)
       if (replicateKey) {
         try {
-          const url = await tryFluxKontext(fullPrompt, [body.sourceImageUrl], aspectRatio, replicateKey);
+          const url = await tryFluxKontext(fullPrompt, refineRefs, aspectRatio, replicateKey);
           return NextResponse.json({ url, type: "image/png", description: prompt.slice(0, 200), provider: "FLUX Kontext (refine)" });
         } catch (e) {
           console.log(`[generate-image] FLUX Kontext refine failed: ${(e as Error).message}`);
@@ -332,7 +362,7 @@ export async function POST(req: NextRequest) {
       // Fallback to Gemini with source as reference
       if (googleKey) {
         try {
-          const url = await tryGemini(fullPrompt, [body.sourceImageUrl], googleKey);
+          const url = await tryGemini(fullPrompt, refineRefs, googleKey);
           return NextResponse.json({ url, type: "image/png", description: prompt.slice(0, 200), provider: "Gemini (refine)" });
         } catch (e) {
           console.log(`[generate-image] Gemini refine failed: ${(e as Error).message}`);
@@ -362,7 +392,7 @@ export async function POST(req: NextRequest) {
 
           const variedProviders = buildProviderChain(
             variedPrompt,
-            referenceImages,
+            effectiveReferenceImages,
             aspectRatio,
             targetWidth,
             targetHeight,
