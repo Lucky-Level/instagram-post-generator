@@ -109,6 +109,25 @@ interface ChatPanelProps {
   agentId?: string;
 }
 
+/** Resize & compress an image to avoid 413 on Vercel (4.5MB body limit) */
+function compressImage(src: string, maxDim = 1024, quality = 0.82): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(src); return; }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+
 export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   const [input, setInput] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -1227,11 +1246,12 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
                 const imgRes = await fetch(data.referenceImageUrl);
                 if (imgRes.ok) {
                   const blob = await imgRes.blob();
-                  const reader = new FileReader();
-                  const base64 = await new Promise<string>((resolve) => {
+                  const rawBase64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
                     reader.onload = () => resolve(reader.result as string);
                     reader.readAsDataURL(blob);
                   });
+                  const base64 = await compressImage(rawBase64);
                   referenceImagesRef.current = [...referenceImagesRef.current, base64];
                   setReferenceImages(referenceImagesRef.current);
                 }
@@ -1253,11 +1273,12 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
       toast.info(`Analisando ${uploadedImages.length} imagem(ns) de referencia...`);
       for (const img of uploadedImages) {
         try {
-          const reader = new FileReader();
-          const base64 = await new Promise<string>((resolve) => {
+          const rawBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
             reader.readAsDataURL(img.file);
           });
+          const base64 = await compressImage(rawBase64);
 
           referenceImagesRef.current = [...referenceImagesRef.current, base64];
           setReferenceImages([...referenceImagesRef.current]);
