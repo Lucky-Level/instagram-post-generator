@@ -658,6 +658,7 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
             updateStep("media-node", "in-progress");
             toast.info("Construindo workflow...");
             const isEdit = data.action === "edit";
+            const isCompose = data.action === "compose" && data.compositionPlan;
             const refs = referenceImagesRef.current;
 
             // Scroll to media node
@@ -680,6 +681,63 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
               imageResult = editRes.ok
                 ? { url: editData.url, type: editData.type, description: data.imagePrompt }
                 : { error: editData.error };
+            } else if (isCompose && refs.length > 0) {
+              toast.info("Composicao autonoma...");
+
+              // Resolve avatar face if avatarId present
+              let avatarFaceUrl: string | undefined;
+              if (data.avatarId) {
+                try {
+                  const avResp = await fetch(`/api/avatars?agentId=${agentId}`);
+                  const avData = await avResp.json();
+                  const avatar = avData?.find?.((a: { id: string }) => a.id === data.avatarId);
+                  if (avatar?.face_image_url) {
+                    avatarFaceUrl = avatar.face_image_url;
+                  }
+                } catch (e) {
+                  console.warn("[compose] Avatar lookup failed:", e);
+                }
+              }
+
+              const composeRes = await fetch("/api/compose", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  plan: data.compositionPlan,
+                  sourceImage: refs[refs.length - 1],
+                  avatarFaceUrl,
+                }),
+              });
+              const composeData = await composeRes.json();
+
+              if (composeRes.ok && composeData.composedImage) {
+                imageResult = {
+                  url: composeData.composedImage,
+                  type: "image/png",
+                  description: composeData.reasoning || data.imagePrompt,
+                };
+              } else {
+                // Fallback: try normal generation if compose fails
+                console.warn("[compose] Failed, falling back to generate:", composeData.error);
+                toast.warning("Composicao falhou, gerando normalmente...");
+                const fallbackRes = await fetch("/api/generate-image", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    prompt: data.imagePrompt,
+                    referenceImages: refs.length > 0 ? refs : undefined,
+                    aspectRatio: primaryAspectRatio,
+                    targetWidth: primaryW,
+                    targetHeight: primaryH,
+                    providerConfig,
+                    avatarId: data.avatarId,
+                  }),
+                });
+                const fallbackData = await fallbackRes.json();
+                imageResult = fallbackRes.ok
+                  ? { url: fallbackData.url || fallbackData.options?.[0]?.url, type: "image/png", description: data.imagePrompt }
+                  : { error: fallbackData.error || "Compose and fallback both failed" };
+              }
             } else {
               toast.info(refs.length > 0 ? "Gerando com referencias..." : "Gerando imagem...");
               const singleRes = await fetch("/api/generate-image", {
