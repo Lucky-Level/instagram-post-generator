@@ -86,5 +86,13 @@
     "typescript": "^5",
     "ultracite": "7.1.5"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "canvas",
+      "protobufjs",
+      "sharp"
+    ]
+  },
   "packageManager": "pnpm@10.29.3"
 }

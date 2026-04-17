@@ -27,6 +27,7 @@ import {
   type KeyboardEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -859,17 +860,28 @@ export const ChatPanel = ({ fullscreen, agentId }: ChatPanelProps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pipelineCreatedAt, pipelineNodeCount, setNodes, setEdges, fitView]);
 
-  // Build dynamic headers for chat transport (includes pipeline context when active)
-  const pipelineContextHeader = pipelineState ? encodeURIComponent(getPipelineSummary(pipelineState)) : undefined;
+  // Keep dynamic header values in a ref so the transport closure always reads fresh values
+  const dynamicHeadersRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    const h: Record<string, string> = {};
+    if (agentId) h["x-agent-id"] = agentId;
+    if (pipelineState) h["x-pipeline-context"] = encodeURIComponent(getPipelineSummary(pipelineState));
+    dynamicHeadersRef.current = h;
+  }, [agentId, pipelineState]);
+
+  // Memoize transport so useChat keeps a stable reference across renders
+  const chatTransport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        headers: () => dynamicHeadersRef.current,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [agentId],
+  );
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      headers: {
-        ...(agentId ? { "x-agent-id": agentId } : {}),
-        ...(pipelineContextHeader ? { "x-pipeline-context": pipelineContextHeader } : {}),
-      },
-    }),
+    transport: chatTransport,
     onError: (error) => {
       toast.error(error.message || "Erro ao gerar resposta");
     },
