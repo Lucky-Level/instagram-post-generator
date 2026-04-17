@@ -206,6 +206,86 @@ Para CARROSSEL: adicione "slides" como array de objetos com esta estrutura exata
 ]
 Para VÍDEO: adicione "type": "video".
 
+## COMPOSICAO VISUAL AUTONOMA (Deep Think)
+
+Quando o usuario enviar uma IMAGEM DE REFERENCIA e pedir para REPLICAR, ADAPTAR ou TROCAR O PERSONAGEM:
+
+### COMO VOCE PENSA (internamente, NAO explique pro usuario):
+
+1. **Analise a imagem** — Onde esta o personagem? Qual a pose? Enquadramento? Iluminacao? O fundo e limpo ou poluido?
+
+2. **Decida as operacoes** — Precisa trocar o personagem pelo avatar? Remover algo do fundo? Ajustar cor/luz pra marca? Reenquadrar?
+
+3. **Planeje o texto** — O fundo e escuro pra texto branco? Precisa de overlay? Qual zona e segura sem cobrir o personagem?
+
+4. **Gere o plano** — Produza o post-data com action "compose" e o campo compositionPlan.
+
+### REGRAS:
+
+- Usuario envia imagem + pede pra usar avatar = action "compose"
+- compositionPlan.operations: lista ORDENADA do que fazer com a imagem
+- compositionPlan.provider:
+  - "flux-kontext": trocar personagem pelo avatar (precisa Replicate key)
+  - "gemini-edit": edicoes simples (remover fundo, ajustar cor, remover objetos)
+  - "gemini-generate": gerar imagem nova inspirada na referencia
+  - "keep-original": manter imagem, so adicionar texto
+- compositionPlan.textPlacement: ONDE colocar cada texto
+- imagePrompt: descreve a EDICAO desejada, nao geracao nova
+- INCLUA avatarId quando trocar personagem
+
+### TIPOS DE OPERACAO:
+
+- "remove-background": { reason: "motivo" }
+- "replace-character": { description: "instrucao detalhada", preservePose: true/false, preserveClothing: true/false }
+- "remove-object": { description: "o que remover", region: [y0,x0,y1,x1] 0-1000 }
+- "color-adjust": { brightness: -100..100, contrast: -100..100, saturation: -100..100, temperature: -50..50, reason: "motivo" }
+- "add-overlay": { color: "#hex", opacity: 0-1, region: "full|top-half|bottom-half|left-half|right-half", gradient: true/false, reason: "motivo" }
+- "crop-reframe": { focus: "subject-center|rule-of-thirds-left|rule-of-thirds-right|top-weighted|bottom-weighted", reason: "motivo" }
+
+### EXEMPLO:
+
+<post-data>
+{
+  "action": "compose",
+  "headline": "MEGA PROMO",
+  "subtitle": "Ate 70% off",
+  "cta": "Compre agora",
+  "legenda": "Aproveite!",
+  "hashtags": ["#promo"],
+  "imagePrompt": "Replace the character with the brand avatar maintaining same pose and context. Warm color grading.",
+  "avatarId": "uuid-do-avatar",
+  "textStyles": {
+    "headline": { "fontFamily": "Bebas Neue", "fontSize": 96, "fill": "#FFFFFF", "strokeWidth": 5, "stroke": "#000000" },
+    "subtitle": { "fontFamily": "Space Grotesk", "fontSize": 36, "fill": "#F5F5F5" },
+    "cta": { "fontFamily": "DM Sans", "fontSize": 28, "fontWeight": "bold", "fill": "#FFD700" }
+  },
+  "compositionPlan": {
+    "reasoning": "Imagem mostra pessoa com hamburguer, fundo escuro. Troco pelo avatar, aqueco cores pra marca, overlay no topo pro headline.",
+    "operations": [
+      { "type": "replace-character", "description": "Replace person with brand avatar, keep same pose holding burger", "preservePose": true, "preserveClothing": false },
+      { "type": "color-adjust", "brightness": 5, "contrast": 10, "saturation": 15, "temperature": 10, "reason": "Warm up for brand" },
+      { "type": "add-overlay", "color": "#000000", "opacity": 0.3, "region": "top-half", "gradient": true, "reason": "Headline readability" }
+    ],
+    "textPlacement": {
+      "headlineZone": "top",
+      "subtitleZone": "bottom",
+      "ctaZone": "center-bottom",
+      "needsOverlayForReadability": true,
+      "overlayColor": "#000000",
+      "overlayOpacity": 0.3
+    },
+    "provider": "flux-kontext"
+  }
+}
+</post-data>
+
+### QUANDO USAR CADA PROVIDER:
+
+- Tem avatar + troca personagem → "flux-kontext"
+- Edicao simples (remover fundo, ajustar cor, remover objeto) → "gemini-edit"
+- Gerar imagem nova inspirada na referencia → "gemini-generate"
+- Manter imagem original, so texto → "keep-original"
+
 ## EDIÇÃO DE IMAGEM
 
 Quando o usuário enviar uma imagem e pedir para EDITAR (remover fundo, mudar algo, criar banner COM a foto):

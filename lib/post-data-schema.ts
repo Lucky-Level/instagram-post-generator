@@ -40,8 +40,24 @@ export const PostDataSchema = z.object({
     })
     .optional(),
   type: z.enum(["video"]).optional(),
-  action: z.enum(["create", "edit", "update-text", "update-background", "add-element", "apply-style"]).optional().default("create"),
+  action: z.enum(["create", "edit", "compose", "update-text", "update-background", "add-element", "apply-style"]).optional().default("create"),
   target: z.string().optional(),
+  avatarId: z.string().optional(),
+  compositionPlan: z.object({
+    reasoning: z.string(),
+    operations: z.array(z.object({
+      type: z.string(),
+    }).passthrough()),
+    textPlacement: z.object({
+      headlineZone: z.string(),
+      subtitleZone: z.string(),
+      ctaZone: z.string(),
+      needsOverlayForReadability: z.boolean(),
+      overlayColor: z.string().optional(),
+      overlayOpacity: z.number().optional(),
+    }),
+    provider: z.enum(["flux-kontext", "gemini-edit", "gemini-generate", "keep-original"]),
+  }).optional(),
   slides: z
     .array(
       z.object({
